@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>Deep Work</title>
+<meta name="theme-color" content="#020203" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Deep Work" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #020203;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #f2f2f5;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 12px calc(20px + env(safe-area-inset-bottom));
+  }
+  .card {
+    background: #0c0c0e;
+    border-radius: 24px;
+    padding: 24px 20px 18px;
+    width: 100%;
+    max-width: 980px;
+    border: 1px solid rgba(255,255,255,0.05);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .eyebrow { font-size: 11px; letter-spacing: .14em; color: #5b7cff; font-weight: 700; margin-bottom: 4px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  .stats-row { display: flex; gap: 8px; }
+  .stat-box {
+    background: #151517; border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 12px; padding: 8px 12px; min-width: 68px; text-align: center;
+  }
+  .stat-value { font-family: 'SF Mono', ui-monospace, monospace; font-size: 15px; font-weight: 600; }
+  .stat-label { font-size: 10px; color: #6b6b72; margin-top: 2px; }
+  .control-panel {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    background: #111113; border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 16px; padding: 14px 18px; margin-bottom: 22px;
+  }
+  .timer-block { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .timer-clock { font-family: 'SF Mono', ui-monospace, monospace; font-size: 20px; min-width: 100px; opacity: .35; }
+  .timer-clock.active { opacity: 1; }
+  .btn { border: none; border-radius: 10px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: #3651d4; color: #fff; }
+  .btn-stop { background: #f2f2f5; color: #0c0c0e; }
+  .btn-ghost { background: transparent; color: #a8a8b0; border: 1px solid rgba(255,255,255,0.1); font-weight: 500; }
+  .divider { width: 1px; align-self: stretch; background: rgba(255,255,255,0.06); }
+  .manual-block { flex: 1; min-width: 160px; }
+  .manual-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input {
+    background: #1a1a1d; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px;
+    padding: 8px 10px; color: #f2f2f5; font-size: 13px; outline: none;
+  }
+  .grid-wrap { overflow-x: auto; padding-bottom: 4px; }
+  .month-row { display: flex; gap: 4px; margin-bottom: 4px; }
+  .month-cell { width: 16px; font-size: 10px; color: #5c5c63; white-space: nowrap; }
+  .grid-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
+  .day-label { width: 38px; font-size: 11px; color: #7a7a82; flex-shrink: 0; }
+  .cell { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; cursor: pointer; }
+  .legend-row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px; }
+  .hover-info { font-size: 12px; color: #8b8b92; min-height: 16px; }
+  .legend { display: flex; align-items: center; gap: 4px; }
+  .legend-label { font-size: 10px; color: #5c5c63; margin: 0 4px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="card">
+    <div class="header-row">
+      <div>
+        <div class="eyebrow">DEEP WORK</div>
+        <h1>Registro diario</h1>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-value" id="statToday">0m</div><div class="stat-label">Hoy</div></div>
+        <div class="stat-box"><div class="stat-value" id="statWeek">0m</div><div class="stat-label">Esta semana</div></div>
+        <div class="stat-box"><div class="stat-value" id="statStreak">0 días</div><div class="stat-label">Racha</div></div>
+      </div>
+    </div>
+
+    <div class="control-panel">
+      <div class="timer-block">
+        <div class="timer-clock" id="timerClock">00:00:00</div>
+        <div id="timerButtons">
+          <button class="btn btn-primary" id="startBtn">● Empezar sesión</button>
+        </div>
+      </div>
+      <div class="divider"></div>
+      <div class="manual-block" id="manualBlock">
+        <button class="btn btn-ghost" id="manualOpenBtn">+ Añadir tiempo manualmente</button>
+      </div>
+    </div>
+
+    <div class="grid-wrap">
+      <div class="month-row" id="monthRow"></div>
+      <div id="gridRows"></div>
+      <div class="legend-row">
+        <div class="hover-info" id="hoverInfo"> </div>
+        <div class="legend">
+          <span class="legend-label">Menos</span>
+          <div class="legend-swatch" style="background:#1c1c1f"></div>
+          <div class="legend-swatch" style="background:#1e2a63"></div>
+          <div class="legend-swatch" style="background:#2b3fa0"></div>
+          <div class="legend-swatch" style="background:#3651d4"></div>
+          <div class="legend-swatch" style="background:#5b7cff"></div>
+          <span class="legend-label">Más</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const WEEKS_TO_SHOW = 18;
+const LOG_KEY = "deepwork-log";
+const SESSION_KEY = "deepwork-active-session";
+const LEVEL_COLORS = ["#1c1c1f","#1e2a63","#2b3fa0","#3651d4","#5b7cff"];
+
+function pad(n){ return n.toString().padStart(2,"0"); }
+function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function startOfWeek(d){
+  const date = new Date(d);
+  const day = (date.getDay()+6)%7;
+  date.setDate(date.getDate()-day);
+  date.setHours(0,0,0,0);
+  return date;
+}
+function fmtMinutes(mins){
+  const h = Math.floor(mins/60);
+  const m = Math.round(mins%60);
+  if (h===0) return `${m}m`;
+  if (m===0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+function fmtClock(totalSeconds){
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.floor((totalSeconds%3600)/60);
+  const s = Math.floor(totalSeconds%60);
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+function levelFor(mins){
+  if (!mins || mins<=0) return 0;
+  if (mins<30) return 1;
+  if (mins<90) return 2;
+  if (mins<180) return 3;
+  return 4;
+}
+
+let log = JSON.parse(localStorage.getItem(LOG_KEY) || "{}");
+let sessionStart = null;
+{
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (raw) {
+    try { sessionStart = JSON.parse(raw).startedAt; } catch(e) {}
+  }
+}
+let tickHandle = null;
+
+function persistLog(){ localStorage.setItem(LOG_KEY, JSON.stringify(log)); }
+function addMinutes(key, mins){
+  log[key] = (log[key]||0) + mins;
+  persistLog();
+}
+
+function startSession(){
+  sessionStart = Date.now();
+  localStorage.setItem(SESSION_KEY, JSON.stringify({ startedAt: sessionStart }));
+  render();
+  startTicking();
+}
+function stopSession(){
+  if (!sessionStart) return;
+  const mins = (Date.now()-sessionStart)/60000;
+  const key = dateKey(new Date());
+  if (mins >= 0.5) addMinutes(key, mins);
+  sessionStart = null;
+  localStorage.removeItem(SESSION_KEY);
+  stopTicking();
+  render();
+}
+function discardSession(){
+  sessionStart = null;
+  localStorage.removeItem(SESSION_KEY);
+  stopTicking();
+  render();
+}
+function startTicking(){
+  stopTicking();
+  tickHandle = setInterval(renderTimerOnly, 1000);
+}
+function stopTicking(){
+  if (tickHandle) clearInterval(tickHandle);
+  tickHandle = null;
+}
+
+function renderTimerOnly(){
+  const clock = document.getElementById("timerClock");
+  if (sessionStart){
+    const secs = Math.floor((Date.now()-sessionStart)/1000);
+    clock.textContent = fmtClock(secs);
+    clock.classList.add("active");
+  }
+  updateStats();
+}
+
+function updateStats(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayKey = dateKey(today);
+  const liveMinutes = sessionStart ? (Date.now()-sessionStart)/60000 : 0;
+  const totalToday = (log[todayKey]||0) + liveMinutes;
+
+  const weekStart = startOfWeek(today);
+  let totalWeek = 0;
+  for (let i=0;i<7;i++){
+    const d = new Date(weekStart); d.setDate(d.getDate()+i);
+    if (d>today) continue;
+    const k = dateKey(d);
+    totalWeek += (k===todayKey ? totalToday : (log[k]||0));
+  }
+
+  let streak = 0;
+  let cursor = new Date(today);
+  if (!(totalToday>0)) cursor.setDate(cursor.getDate()-1);
+  while (true){
+    const k = dateKey(cursor);
+    const mins = k===todayKey ? totalToday : (log[k]||0);
+    if (mins>0){ streak++; cursor.setDate(cursor.getDate()-1); } else break;
+  }
+
+  document.getElementById("statToday").textContent = fmtMinutes(totalToday);
+  document.getElementById("statWeek").textContent = fmtMinutes(totalWeek);
+  document.getElementById("statStreak").textContent = `${streak} día${streak===1?"":"s"}`;
+}
+
+function render(){
+  const timerButtons = document.getElementById("timerButtons");
+  const clock = document.getElementById("timerClock");
+  if (sessionStart){
+    timerButtons.innerHTML = `
+      <button class="btn btn-stop" id="stopBtn">■ Terminar y guardar</button>
+      <button class="btn btn-ghost" id="discardBtn">Descartar</button>
+    `;
+    document.getElementById("stopBtn").onclick = stopSession;
+    document.getElementById("discardBtn").onclick = discardSession;
+    clock.classList.add("active");
+  } else {
+    timerButtons.innerHTML = `<button class="btn btn-primary" id="startBtn">● Empezar sesión</button>`;
+    document.getElementById("startBtn").onclick = startSession;
+    clock.classList.remove("active");
+    clock.textContent = "00:00:00";
+  }
+  renderGrid();
+  updateStats();
+}
+
+function renderManualForm(open){
+  const block = document.getElementById("manualBlock");
+  const todayKey = dateKey(new Date());
+  if (!open){
+    block.innerHTML = `<button class="btn btn-ghost" id="manualOpenBtn">+ Añadir tiempo manualmente</button>`;
+    document.getElementById("manualOpenBtn").onclick = () => renderManualForm(true);
+  } else {
+    block.innerHTML = `
+      <div class="manual-form">
+        <input type="date" id="manualDate" value="${todayKey}" max="${todayKey}" />
+        <input type="number" id="manualMinutes" min="1" placeholder="minutos" style="width:90px" />
+        <button class="btn btn-primary" id="manualSaveBtn" style="padding:8px 12px;font-size:12px;">Guardar</button>
+        <button class="btn btn-ghost" id="manualCancelBtn" style="padding:8px 12px;font-size:12px;">Cancelar</button>
+      </div>
+    `;
+    document.getElementById("manualSaveBtn").onclick = () => {
+      const mins = parseFloat(document.getElementById("manualMinutes").value);
+      const d = document.getElementById("manualDate").value;
+      if (mins > 0 && d){
+        addMinutes(d, mins);
+        renderGrid();
+        updateStats();
+      }
+      renderManualForm(false);
+    };
+    document.getElementById("manualCancelBtn").onclick = () => renderManualForm(false);
+  }
+}
+
+function renderGrid(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const currentWeekStart = startOfWeek(today);
+  const firstWeekStart = new Date(currentWeekStart);
+  firstWeekStart.setDate(firstWeekStart.getDate() - 7*(WEEKS_TO_SHOW-1));
+
+  const columns = [];
+  for (let w=0; w<WEEKS_TO_SHOW; w++){
+    const weekStart = new Date(firstWeekStart);
+    weekStart.setDate(weekStart.getDate() + 7*w);
+    const days = [];
+    for (let d=0; d<7; d++){
+      const date = new Date(weekStart);
+      date.setDate(date.getDate()+d);
+      days.push(date);
+    }
+    columns.push(days);
+  }
+
+  const todayKey = dateKey(today);
+  const liveMinutes = sessionStart ? (Date.now()-sessionStart)/60000 : 0;
+
+  // month row
+  const monthRow = document.getElementById("monthRow");
+  let lastMonth = null;
+  let monthHtml = `<div style="width:38px"></div>`;
+  columns.forEach((days) => {
+    const m = days[0].getMonth();
+    let label = "";
+    if (m !== lastMonth){
+      label = days[0].toLocaleDateString("es-ES", { month: "short" });
+      lastMonth = m;
+    }
+    monthHtml += `<div class="month-cell">${label}</div>`;
+  });
+  monthRow.innerHTML = monthHtml;
+
+  const gridRows = document.getElementById("gridRows");
+  let rowsHtml = "";
+  const dayNames = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+  for (let rowIdx=0; rowIdx<7; rowIdx++){
+    rowsHtml += `<div class="grid-row"><div class="day-label">${dayNames[rowIdx]}</div>`;
+    columns.forEach((days) => {
+      const date = days[rowIdx];
+      const key = dateKey(date);
+      const isFuture = date > today;
+      const isToday = key === todayKey;
+      const mins = key===todayKey ? ((log[key]||0)+liveMinutes) : (log[key]||0);
+      const level = isFuture ? -1 : levelFor(mins);
+      const bg = isFuture ? "transparent" : LEVEL_COLORS[level];
+      const border = isToday ? "1.5px solid rgba(255,255,255,0.85)" : isFuture ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(255,255,255,0.02)";
+      rowsHtml += `<div class="cell" data-key="${key}" data-mins="${mins}" data-future="${isFuture}" style="background:${bg};border:${border}"></div>`;
+    });
+    rowsHtml += `</div>`;
+  }
+  gridRows.innerHTML = rowsHtml;
+
+  gridRows.querySelectorAll(".cell").forEach(cell => {
+    if (cell.dataset.future === "true") return;
+    cell.addEventListener("mouseenter", () => {
+      const [y,m,d] = cell.dataset.key.split("-").map(Number);
+      const date = new Date(y, m-1, d);
+      const mins = parseFloat(cell.dataset.mins);
+      document.getElementById("hoverInfo").textContent =
+        `${date.toLocaleDateString("es-ES",{weekday:"long",day:"numeric",month:"short"})} · ${fmtMinutes(mins)}`;
+    });
+    cell.addEventListener("mouseleave", () => {
+      document.getElementById("hoverInfo").textContent = " ";
+    });
+  });
+}
+
+// init
+document.getElementById("manualOpenBtn").onclick = () => renderManualForm(true);
+render();
+if (sessionStart) startTicking();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
