@@ -6,10 +6,11 @@
    - iconos y manifiesto → caché primero (no cambian)
    Subir CACHE_VERSION invalida lo viejo en la siguiente visita. */
 
-const CACHE_VERSION = "deepwork-v3";
+const CACHE_VERSION = "deepwork-v4";
 const ASSETS = [
   "./",
   "./index.html",
+  "./config.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
@@ -41,11 +42,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  const isDocument = request.mode === "navigate" ||
-                     request.destination === "document" ||
-                     url.pathname.endsWith(".html");
+  // config.js va con la red por delante igual que el HTML: si cambian las
+  // claves de Supabase, la app se entera en la siguiente visita.
+  const networkFirst = request.mode === "navigate" ||
+                       request.destination === "document" ||
+                       url.pathname.endsWith(".html") ||
+                       url.pathname.endsWith("/config.js");
 
-  if (isDocument) {
+  if (networkFirst) {
     // red primero: así una actualización llega sin tener que reinstalar
     event.respondWith(
       fetch(request)

@@ -81,7 +81,6 @@
     border-radius: 24px;
     padding: 22px 20px 18px;
     width: 100%;
-    max-width: 1020px;
     border: 1px solid var(--line);
     box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 24px 70px rgba(0,0,0,.6);
     animation: cardIn .5s var(--ease) both;
@@ -347,8 +346,122 @@
     overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
   }
 
+  /* ---------- ranking ---------- */
+  .stack { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 1020px; }
+
+  .rank-head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    flex-wrap: wrap; gap: 12px; margin-bottom: 16px;
+  }
+  .rank-head h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
+  .rank-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .code-chip {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--panel-2); border: 1px solid var(--line-2);
+    border-radius: 10px; padding: 7px 10px; cursor: pointer;
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 13px; letter-spacing: .12em; color: var(--text);
+    transition: transform .18s var(--spring), border-color .2s, background .2s;
+  }
+  .code-chip:hover { border-color: var(--accent); background: #1d1d21; }
+  .code-chip:active { transform: scale(.96); }
+  .code-chip .hint { font-family: inherit; font-size: 10px; letter-spacing: 0; color: var(--dim); }
+
+  .metric-tabs { display: flex; gap: 4px; background: var(--panel); border-radius: 10px; padding: 3px; }
+  .metric-tab {
+    border: none; background: transparent; color: var(--dim);
+    font-family: inherit; font-size: 12px; font-weight: 600;
+    padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    transition: color .2s var(--ease), background .3s var(--ease);
+  }
+  .metric-tab:hover { color: var(--muted); }
+  .metric-tab.on { background: var(--panel-2); color: var(--text); }
+
+  .rank-list { display: flex; flex-direction: column; gap: 2px; }
+
+  .rank-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; border-radius: 12px;
+    position: relative; overflow: hidden;
+    border: 1px solid transparent;
+    transition: background .25s var(--ease), border-color .25s var(--ease);
+    animation: rowIn .42s var(--ease) both;
+  }
+  @keyframes rowIn { from { opacity: 0; transform: translateY(8px); } }
+  .rank-row:hover { background: rgba(255,255,255,.03); }
+  .rank-row.me { background: rgba(91,124,255,.09); border-color: rgba(91,124,255,.26); }
+
+  /* barra proporcional al mejor del grupo */
+  .rank-row .bar {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+    background: linear-gradient(90deg, rgba(54,81,212,.30), rgba(91,124,255,.06));
+    transition: width .8s var(--ease);
+    z-index: 0;
+  }
+  .rank-row > *:not(.bar) { position: relative; z-index: 1; }
+
+  .rank-pos {
+    width: 26px; flex-shrink: 0; text-align: center;
+    font-family: "SF Mono", ui-monospace, monospace; font-size: 13px;
+    font-variant-numeric: tabular-nums; color: var(--dim); font-weight: 600;
+  }
+  .rank-pos.medal { font-size: 15px; }
+
+  .rank-who { flex: 1; min-width: 0; }
+  .rank-name {
+    font-size: 14px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .rank-name .you {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--accent);
+    margin-left: 6px; vertical-align: 1px;
+  }
+  .rank-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+  .rank-value {
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+    flex-shrink: 0; text-align: right;
+  }
+  .rank-row.me .rank-value { color: var(--accent); }
+
+  .sync-line {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line);
+    font-size: 11px; color: var(--dim);
+  }
+  .sync-line .spacer { flex: 1; min-width: 0; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 99px; background: var(--good); flex-shrink: 0; }
+  .sync-dot.bad { background: #ff6b6b; }
+  .sync-dot.wait { background: var(--dim); animation: blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  .rank-empty { text-align: center; padding: 22px 10px 6px; color: var(--dim); font-size: 13px; line-height: 1.6; }
+  .rank-cta { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+
+  .skeleton { background: var(--l0); border-radius: 12px; height: 46px; margin-bottom: 2px; animation: blink 1.4s ease-in-out infinite; }
+
+  .field-label { font-size: 11px; color: var(--dim); margin: 0 0 6px; }
+  .modal input.text { text-align: left; }
+  .modal input.code {
+    text-align: center; letter-spacing: .3em; text-transform: uppercase;
+    font-family: "SF Mono", ui-monospace, monospace; font-size: 18px;
+  }
+  .modal .error {
+    font-size: 12px; color: #ff9b9b; background: rgba(255,107,107,.1);
+    border: 1px solid rgba(255,107,107,.25); border-radius: 10px;
+    padding: 9px 11px; margin-bottom: 14px;
+    animation: cardIn .3s var(--ease) both;
+  }
+  .modal .fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+
   @media (max-width: 560px) {
     .card { padding: 18px 14px 14px; border-radius: 20px; }
+    .rank-head { align-items: stretch; }
+    .rank-tools { width: 100%; }
+    .metric-tabs { flex: 1; }
+    .metric-tab { flex: 1; }
     .stats-row { width: 100%; }
     .stat-box { flex: 1; min-width: 0; }
     .divider { display: none; }
@@ -370,6 +483,7 @@
 </head>
 <body>
 <div class="page">
+ <div class="stack">
   <main class="card">
     <div class="header-row">
       <div>
@@ -436,12 +550,26 @@
       <input type="file" id="importFile" accept="application/json,.json" class="sr-only" />
     </div>
   </main>
+
+  <section class="card" id="rankCard">
+    <div class="rank-head">
+      <div>
+        <div class="eyebrow">RANKING</div>
+        <h2 id="rankTitle">Compite con tu gente</h2>
+      </div>
+      <div class="rank-tools" id="rankTools"></div>
+    </div>
+    <div id="rankBody"></div>
+    <div id="rankSync"></div>
+  </section>
+ </div>
 </div>
 
 <div class="tip" id="tip" role="tooltip" aria-hidden="true"></div>
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
 <div id="modalSlot"></div>
 
+<script src="config.js"></script>
 <script>
 "use strict";
 
@@ -457,6 +585,7 @@ const K = {
   BACKUP:  "deepwork:log:backup:v2",
   SESSION: "deepwork:session:v2",
   PREFS:   "deepwork:prefs:v2",
+  GROUP:   "deepwork:group:v1",
   OLD_LOG: "deepwork-log",
   OLD_SES: "deepwork-active-session"
 };
@@ -654,6 +783,7 @@ function persist() {
   writeJSON(K.BACKUP, doc);
   idbSet("log", doc);
   if (!ok) toast("No se ha podido guardar en este navegador", true);
+  schedulePush();
 }
 
 function savePrefs() { writeJSON(K.PREFS, prefs); }
@@ -780,6 +910,7 @@ function stopSession() {
     render();
     popToday();
     toast("Guardado: " + fmtMinutes(elapsed));
+    if (group && supaReady()) syncNow(false);   // el ranking se entera al momento
   } else {
     render();
     toast("Sesión demasiado corta, no se ha guardado", true);
@@ -821,6 +952,9 @@ function tick() {
   }
   updateStats();
   updateTodayCell();
+
+  // durante la sesión, mi fila del ranking sube sola una vez por minuto
+  if (session && group && Math.floor((Date.now() - session.startedAt) / 1000) % 60 === 0) renderRanking();
 }
 
 /* --------------------- recuperación de sesión ----------------------- */
@@ -1051,6 +1185,7 @@ function render() {
   updateStats();
   updateGoal();
   updateSummary();
+  renderRanking();
 }
 
 function renderTimer() {
@@ -1220,6 +1355,458 @@ function hideTip() {
   $("hoverInfo").innerHTML = "&nbsp;";
 }
 
+/* =====================================================================
+   Ranking por grupos
+   ---------------------------------------------------------------------
+   El registro local sigue mandando: la app funciona igual sin conexión y
+   sin grupo. Esto sólo añade una copia de tus minutos en Supabase para
+   poder compararlos con los de tu gente. El código del grupo es la llave
+   compartida; el secreto de cada miembro, guardado sólo en su
+   dispositivo, es lo que impide que nadie escriba en tu nombre.
+   ===================================================================== */
+
+const SUPA = window.DEEPWORK_CONFIG || {};
+const supaReady = () => !!(SUPA.SUPABASE_URL && SUPA.SUPABASE_KEY);
+
+let group = readJSON(K.GROUP);          // { code, name, memberId, secret, nickname }
+let board = null;                       // respuesta de dw_leaderboard
+let boardError = null;
+let boardLoading = false;
+let metric = (prefs.metric === "today" || prefs.metric === "total") ? prefs.metric : "week";
+let syncState = { state: "idle", at: 0, error: null };
+let boardFresh = false;                 // la entrada escalonada sólo al traer datos nuevos
+let pushTimer = null;
+let pushing = false;
+let pushAgain = false;
+
+async function rpc(fn, args) {
+  const base = String(SUPA.SUPABASE_URL).replace(/\/+$/, "");
+  const res = await fetch(base + "/rest/v1/rpc/" + fn, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      apikey: SUPA.SUPABASE_KEY,
+      Authorization: "Bearer " + SUPA.SUPABASE_KEY
+    },
+    body: JSON.stringify(args)
+  });
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { /* respuesta vacía */ }
+  if (!res.ok) {
+    throw new Error((data && (data.message || data.hint || data.error_description)) || ("Error " + res.status));
+  }
+  return data;
+}
+
+function saveGroup() {
+  if (group) writeJSON(K.GROUP, group);
+  else localStorage.removeItem(K.GROUP);
+}
+
+/* --------------------------- enviar minutos ------------------------- */
+
+function daysPayload() {
+  const out = {};
+  for (const key in doc.days) {
+    const mins = doc.days[key].m;
+    if (mins > 0) out[key] = Math.round(mins * 10) / 10;
+  }
+  return out;
+}
+
+function schedulePush() {
+  if (!group || !supaReady()) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushNow, 2500);   // agrupa ráfagas de ediciones
+}
+
+async function pushNow() {
+  if (!group || !supaReady()) return;
+  if (pushing) { pushAgain = true; return; }   // nunca dos envíos a la vez
+  pushing = true;
+  clearTimeout(pushTimer);
+  syncState = { state: "sending", at: syncState.at, error: null };
+  renderSync();
+  try {
+    await rpc("dw_push", {
+      p_member: group.memberId,
+      p_secret: group.secret,
+      p_days: daysPayload(),
+      p_nickname: null
+    });
+    syncState = { state: "ok", at: Date.now(), error: null };
+  } catch (e) {
+    syncState = { state: "error", at: syncState.at, error: e.message };
+  }
+  pushing = false;
+  renderSync();
+  if (pushAgain) { pushAgain = false; schedulePush(); }
+}
+
+async function fetchBoard(silent) {
+  if (!group || !supaReady()) return;
+  boardLoading = true;
+  boardError = null;
+  if (!silent) renderRanking();
+  try {
+    board = await rpc("dw_leaderboard", { p_code: group.code, p_today: dateKey(new Date()) });
+    boardFresh = true;
+    if (board && board.name && board.name !== group.name) { group.name = board.name; saveGroup(); }
+  } catch (e) {
+    boardError = e.message;
+  }
+  boardLoading = false;
+  renderRanking();
+}
+
+async function syncNow(announce) {
+  await pushNow();
+  await fetchBoard(true);
+  if (announce) toast(boardError ? "No se ha podido actualizar" : "Ranking actualizado", !!boardError);
+}
+
+/* ------------------------------ pintado ----------------------------- */
+
+const METRICS = [
+  { id: "today", label: "Hoy" },
+  { id: "week",  label: "Semana" },
+  { id: "total", label: "Total" }
+];
+
+function renderRanking() {
+  const tools = $("rankTools");
+  const body = $("rankBody");
+  const title = $("rankTitle");
+
+  if (!supaReady()) {
+    title.textContent = "Ranking sin configurar";
+    tools.innerHTML = "";
+    body.innerHTML =
+      '<div class="rank-empty">Falta conectar la base de datos.<br>' +
+      "Rellena <b>config.js</b> con los datos de tu proyecto de Supabase y el ranking se activa solo.</div>";
+    renderSync();
+    return;
+  }
+
+  if (!group) {
+    title.textContent = "Compite con tu gente";
+    tools.innerHTML = "";
+    body.innerHTML =
+      '<div class="rank-empty">Crea un grupo y pasa el código a quien quieras.<br>' +
+      "Veréis las horas de trabajo profundo de cada uno." +
+      '<div class="rank-cta">' +
+        '<button class="btn btn-primary" id="createGroupBtn">Crear un grupo</button>' +
+        '<button class="btn btn-ghost" id="joinGroupBtn">Tengo un código</button>' +
+      "</div></div>";
+    wireButton($("createGroupBtn"), openCreateGroup);
+    wireButton($("joinGroupBtn"), openJoinGroup);
+    renderSync();
+    return;
+  }
+
+  title.textContent = group.name;
+  tools.innerHTML =
+    '<button class="code-chip" id="codeChip" title="Copiar el código">' +
+      group.code + '<span class="hint">copiar</span>' +
+    "</button>" +
+    '<div class="metric-tabs">' +
+      METRICS.map((m) => '<button class="metric-tab' + (m.id === metric ? " on" : "") + '" data-metric="' + m.id + '">' + m.label + "</button>").join("") +
+    "</div>";
+
+  $("codeChip").onclick = copyCode;
+  tools.querySelectorAll(".metric-tab").forEach((tab) => {
+    tab.onclick = () => {
+      metric = tab.dataset.metric;
+      prefs.metric = metric;
+      savePrefs();
+      haptic(8);
+      renderRanking();
+    };
+  });
+
+  if (boardLoading && !board) {
+    body.innerHTML = '<div class="rank-list">' + '<div class="skeleton"></div>'.repeat(3) + "</div>";
+    renderSync();
+    return;
+  }
+
+  if (boardError && !board) {
+    body.innerHTML = '<div class="rank-empty">No se ha podido cargar el ranking.<br>' + boardError +
+      '<div class="rank-cta"><button class="btn btn-ghost" id="retryBoard">Reintentar</button></div></div>';
+    wireButton($("retryBoard"), () => fetchBoard(false));
+    renderSync();
+    return;
+  }
+
+  const members = (board && board.members) || [];
+  const live = liveMinutes();
+
+  // A mis propias cifras les sumo la sesión en marcha, que el servidor
+  // todavía no conoce: así mi fila no se queda atrás mientras trabajo.
+  const rows = members.map((m) => {
+    const mine = m.member_id === group.memberId;
+    return {
+      mine: mine,
+      nickname: m.nickname,
+      today: (m.today || 0) + (mine ? live : 0),
+      week: (m.week || 0) + (mine ? live : 0),
+      total: (m.total || 0) + (mine ? live : 0),
+      streak: m.streak || 0,
+      lastDay: m.last_day || null
+    };
+  });
+
+  rows.sort((a, b) => b[metric] - a[metric] || a.nickname.localeCompare(b.nickname, "es"));
+  const top = rows.length ? Math.max(rows[0][metric], 1) : 1;
+  const medals = ["🥇", "🥈", "🥉"];
+
+  if (!rows.length) {
+    body.innerHTML = '<div class="rank-empty">Todavía no hay nadie más.<br>Pasa el código <b>' + group.code + "</b> a quien quieras.</div>";
+    renderSync();
+    return;
+  }
+
+  body.innerHTML = '<div class="rank-list">' + rows.map((r, i) => {
+    const value = r[metric];
+    const width = clamp((value / top) * 100, 0, 100);
+    const medal = i < 3 && value > 0 ? medals[i] : String(i + 1);
+    const sub = [];
+    if (r.streak > 0) sub.push("🔥 " + r.streak + " día" + (r.streak === 1 ? "" : "s"));
+    if (metric !== "total") sub.push("total " + fmtMinutes(r.total));
+    if (!r.lastDay && !value) sub.push("sin registrar nada aún");
+
+    const anim = boardFresh ? "animation-delay:" + Math.min(i * 45, 400) + "ms" : "animation:none";
+    return '<div class="rank-row' + (r.mine ? " me" : "") + '" style="' + anim + '">' +
+      '<div class="bar" style="width:' + width + '%"></div>' +
+      '<div class="rank-pos' + (i < 3 && value > 0 ? " medal" : "") + '">' + medal + "</div>" +
+      '<div class="rank-who">' +
+        '<div class="rank-name">' + escapeHtml(r.nickname) + (r.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
+        (sub.length ? '<div class="rank-sub">' + sub.join(" · ") + "</div>" : "") +
+      "</div>" +
+      '<div class="rank-value">' + fmtMinutes(value) + "</div>" +
+    "</div>";
+  }).join("") + "</div>";
+
+  boardFresh = false;
+  renderSync();
+}
+
+function renderSync() {
+  const slot = $("rankSync");
+  if (!supaReady() || !group) { slot.innerHTML = ""; return; }
+
+  let dotClass = "sync-dot";
+  let text;
+  if (syncState.state === "sending" || boardLoading) { dotClass += " wait"; text = "Sincronizando…"; }
+  else if (syncState.state === "error") { dotClass += " bad"; text = "Sin conexión · se enviará al volver"; }
+  else if (syncState.at) { text = "Al día · " + new Date(syncState.at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); }
+  else { dotClass += " wait"; text = "Pendiente de enviar"; }
+
+  slot.innerHTML =
+    '<div class="sync-line">' +
+      '<span class="' + dotClass + '"></span><span>' + text + "</span>" +
+      '<span class="spacer"></span>' +
+      '<button class="link-btn" id="refreshBtn">Actualizar</button>' +
+      '<button class="link-btn" id="renameBtn">Cambiar apodo</button>' +
+      '<button class="link-btn" id="leaveBtn">Salir del grupo</button>' +
+    "</div>";
+
+  wireButton($("refreshBtn"), () => syncNow(true));
+  wireButton($("renameBtn"), openRename);
+  wireButton($("leaveBtn"), openLeave);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function copyCode() {
+  const done = () => { haptic(10); toast("Código " + group.code + " copiado"); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(group.code).then(done, () => toast("No se ha podido copiar", true));
+  } else {
+    const tmp = document.createElement("input");
+    tmp.value = group.code;
+    document.body.appendChild(tmp);
+    tmp.select();
+    try { document.execCommand("copy"); done(); } catch (e) { toast("No se ha podido copiar", true); }
+    tmp.remove();
+  }
+}
+
+/* ------------------------------ diálogos ---------------------------- */
+
+function showModalError(message) {
+  const box = document.querySelector(".modal .error");
+  if (box) { box.textContent = message; return; }
+  const fields = document.querySelector(".modal .fields");
+  const el = document.createElement("div");
+  el.className = "error";
+  el.textContent = message;
+  fields.parentNode.insertBefore(el, fields);
+}
+
+function busy(button, isBusy, label) {
+  button.disabled = isBusy;
+  button.style.opacity = isBusy ? ".6" : "";
+  button.textContent = isBusy ? "…" : label;
+}
+
+function openCreateGroup() {
+  openModal(
+    "<h2>Crear un grupo</h2>" +
+    '<div class="sub">Te daremos un código para invitar a quien quieras</div>' +
+    '<div class="fields">' +
+      '<div><div class="field-label">Nombre del grupo</div>' +
+        '<input class="text" id="gName" maxlength="40" placeholder="Los del gimnasio" /></div>' +
+      '<div><div class="field-label">Tu apodo</div>' +
+        '<input class="text" id="gNick" maxlength="24" placeholder="Alex" value="' + escapeHtml(prefs.nickname || "") + '" /></div>' +
+    "</div>" +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
+      '<button class="btn btn-primary" id="gCreate">Crear</button>' +
+    "</div>",
+    (close) => {
+      $("gName").focus();
+      const submit = async () => {
+        const button = $("gCreate");
+        busy(button, true, "Crear");
+        try {
+          const data = await rpc("dw_create_group", { p_name: $("gName").value, p_nickname: $("gNick").value });
+          group = { code: data.code, name: data.name, memberId: data.member_id, secret: data.secret, nickname: data.nickname };
+          saveGroup();
+          prefs.nickname = data.nickname;
+          savePrefs();
+          close();
+          renderRanking();
+          await syncNow(false);
+          haptic([10, 40, 18]);
+          toast("Grupo creado · código " + data.code);
+        } catch (e) {
+          busy(button, false, "Crear");
+          showModalError(e.message);
+        }
+      };
+      document.querySelectorAll(".modal input").forEach((i) =>
+        i.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); }));
+      wireButton($("gCancel"), close);
+      wireButton($("gCreate"), submit);
+    }
+  );
+}
+
+function openJoinGroup() {
+  openModal(
+    "<h2>Unirme a un grupo</h2>" +
+    '<div class="sub">Pide el código de 6 letras a quien lo creó</div>' +
+    '<div class="fields">' +
+      '<div><div class="field-label">Código</div>' +
+        '<input class="code" id="gCode" maxlength="6" autocapitalize="characters" autocomplete="off" placeholder="ABC123" /></div>' +
+      '<div><div class="field-label">Tu apodo</div>' +
+        '<input class="text" id="gNick" maxlength="24" placeholder="Alex" value="' + escapeHtml(prefs.nickname || "") + '" /></div>' +
+    "</div>" +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
+      '<button class="btn btn-primary" id="gJoin">Entrar</button>' +
+    "</div>",
+    (close) => {
+      $("gCode").focus();
+      const submit = async () => {
+        const button = $("gJoin");
+        busy(button, true, "Entrar");
+        try {
+          const data = await rpc("dw_join_group", { p_code: $("gCode").value, p_nickname: $("gNick").value });
+          group = { code: data.code, name: data.name, memberId: data.member_id, secret: data.secret, nickname: data.nickname };
+          saveGroup();
+          prefs.nickname = data.nickname;
+          savePrefs();
+          close();
+          renderRanking();
+          await syncNow(false);
+          haptic([10, 40, 18]);
+          toast("Dentro de " + data.name);
+        } catch (e) {
+          busy(button, false, "Entrar");
+          showModalError(e.message);
+        }
+      };
+      document.querySelectorAll(".modal input").forEach((i) =>
+        i.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); }));
+      wireButton($("gCancel"), close);
+      wireButton($("gJoin"), submit);
+    }
+  );
+}
+
+function openRename() {
+  openModal(
+    "<h2>Cambiar apodo</h2>" +
+    '<div class="sub">Así te verá el resto del grupo</div>' +
+    '<div class="fields">' +
+      '<div><input class="text" id="gNick" maxlength="24" value="' + escapeHtml(group.nickname) + '" /></div>' +
+    "</div>" +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
+      '<button class="btn btn-primary" id="gSave">Guardar</button>' +
+    "</div>",
+    (close) => {
+      $("gNick").focus();
+      $("gNick").select();
+      const submit = async () => {
+        const button = $("gSave");
+        busy(button, true, "Guardar");
+        try {
+          await rpc("dw_push", {
+            p_member: group.memberId, p_secret: group.secret,
+            p_days: daysPayload(), p_nickname: $("gNick").value
+          });
+          group.nickname = $("gNick").value.trim();
+          saveGroup();
+          prefs.nickname = group.nickname;
+          savePrefs();
+          close();
+          await fetchBoard(true);
+          toast("Ahora eres " + group.nickname);
+        } catch (e) {
+          busy(button, false, "Guardar");
+          showModalError(e.message);
+        }
+      };
+      $("gNick").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      wireButton($("gCancel"), close);
+      wireButton($("gSave"), submit);
+    }
+  );
+}
+
+function openLeave() {
+  openModal(
+    "<h2>Salir del grupo</h2>" +
+    '<div class="sub">Tu registro diario se queda intacto en este dispositivo. Lo que se borra es tu copia en el grupo, y desaparecerás del ranking de los demás.</div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="gCancel">Quedarme</button>' +
+      '<button class="btn btn-stop" id="gLeave">Salir</button>' +
+    "</div>",
+    (close) => {
+      wireButton($("gCancel"), close);
+      wireButton($("gLeave"), async () => {
+        const button = $("gLeave");
+        busy(button, true, "Salir");
+        try { await rpc("dw_leave", { p_member: group.memberId, p_secret: group.secret }); }
+        catch (e) { /* si el servidor no responde, salimos igual en local */ }
+        group = null;
+        board = null;
+        saveGroup();
+        close();
+        renderRanking();
+        toast("Has salido del grupo");
+      });
+    }
+  );
+}
+
 /* ------------------------------ arranque ---------------------------- */
 
 loadSync();
@@ -1229,6 +1816,8 @@ render();
 if (session) { startTicking(); acquireWakeLock(); }
 loadAsync();
 requestPersistence();
+renderRanking();
+if (group && supaReady()) syncNow(false);
 
 // scroll al final para que hoy quede a la vista en móvil
 const wrap = $("gridWrap");
@@ -1286,7 +1875,12 @@ document.addEventListener("visibilitychange", () => {
   checkRecovery();
   render();
   if (session) acquireWakeLock();
+  // al volver a la app, refresca el ranking si lleva más de un minuto parado
+  if (group && supaReady() && Date.now() - syncState.at > 60000) syncNow(false);
 });
+
+// se recupera la conexión: enviamos lo que quedó pendiente
+window.addEventListener("online", () => { if (group && supaReady()) syncNow(false); });
 
 // última red de seguridad: la sesión abierta queda anotada al salir
 window.addEventListener("pagehide", () => {
