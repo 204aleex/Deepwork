@@ -14,6 +14,6 @@
    aparece desactivado. */
 
 window.DEEPWORK_CONFIG = {
-  SUPABASE_URL: "",
-  SUPABASE_KEY: ""
+  SUPABASE_URL: "https://gsoxelgpexrqyazhedye.supabase.co",
+  SUPABASE_KEY: "sb_publishable_Yd_MGdwPyHinS2x3MsAD0Q_CEFacCgk"
 };
