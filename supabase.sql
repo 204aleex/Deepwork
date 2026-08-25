@@ -88,7 +88,7 @@ create or replace function public.dw_streak(p_member uuid, p_today date)
 returns int
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_dia   date := p_today;
@@ -132,7 +132,7 @@ create or replace function public.dw_create_group(p_name text, p_nickname text)
 returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_name     text := trim(regexp_replace(coalesce(p_name, ''), '\s+', ' ', 'g'));
@@ -173,7 +173,7 @@ create or replace function public.dw_join_group(p_code text, p_nickname text)
 returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_code     text := upper(trim(coalesce(p_code, '')));
@@ -188,12 +188,16 @@ begin
     raise exception 'No existe ningún grupo con ese código' using errcode = 'DW003';
   end if;
 
-  if exists (select 1 from dw_members where group_id = v_group_id and lower(nickname) = lower(v_nick)) then
+  -- El índice único es el que manda. Comprobar y luego insertar deja una
+  -- rendija: si dos personas entran con el mismo apodo a la vez, las dos
+  -- pasan la comprobación y la segunda reventaba con el error crudo de
+  -- Postgres. Aquí se atrapa y sale el mismo mensaje de siempre.
+  begin
+    insert into dw_members (group_id, nickname, secret)
+      values (v_group_id, v_nick, v_secret) returning id into v_member;
+  exception when unique_violation then
     raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
-  end if;
-
-  insert into dw_members (group_id, nickname, secret)
-    values (v_group_id, v_nick, v_secret) returning id into v_member;
+  end;
 
   return json_build_object(
     'code', v_code, 'name', v_name,
@@ -209,7 +213,7 @@ create or replace function public.dw_push(p_member uuid, p_secret text, p_days j
 returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_group uuid;
@@ -223,13 +227,13 @@ begin
 
   if p_nickname is not null then
     v_nick := dw_clean_nickname(p_nickname);
-    if exists (
-      select 1 from dw_members
-      where group_id = v_group and lower(nickname) = lower(v_nick) and id <> p_member
-    ) then
+    -- Igual que al unirse: manda el índice único, y el choque se traduce al
+    -- mensaje de siempre en vez de soltar el error crudo de Postgres.
+    begin
+      update dw_members set nickname = v_nick where id = p_member;
+    exception when unique_violation then
       raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
-    end if;
-    update dw_members set nickname = v_nick where id = p_member;
+    end;
   end if;
 
   if p_days is not null and jsonb_typeof(p_days) = 'object' then
@@ -257,7 +261,7 @@ create or replace function public.dw_leaderboard(p_code text, p_today date)
 returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_code       text := upper(trim(coalesce(p_code, '')));
@@ -298,7 +302,7 @@ create or replace function public.dw_leave(p_member uuid, p_secret text)
 returns json
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   delete from dw_members where id = p_member and secret = p_secret;

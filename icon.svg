@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Deep Work">
+  <!-- Icono de Deep Work.
+       El anterior era una rejilla 4x4 casi negra sobre fondo casi negro: a
+       16 px en la pestana se perdia, y sobre el modo oscuro de Chrome
+       desaparecia del todo. Este lleva tile azul solido, que se recorta
+       igual de bien sobre barras claras y oscuras.
+
+       El dibujo son tres columnas ascendentes hechas con las celdas de la
+       rejilla de la app. La separacion entre celdas es pequena y la
+       separacion entre columnas grande, a proposito: a tamano de pestana
+       las celdas de cada columna se funden en una barra limpia mientras
+       las tres columnas siguen distinguiendose. A tamano grande se
+       reconoce la rejilla.
+
+       Todo el dibujo cabe dentro del circulo de seguridad del 80% que
+       exigen los iconos "maskable" de Android. -->
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5b7cff"/>
+      <stop offset="1" stop-color="#2f45c4"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#fondo)"/>
+
+  <g fill="#ffffff">
+    <!-- columna 1: dos celdas -->
+    <rect x="129" y="261" width="70" height="70" rx="18" opacity=".72"/>
+    <rect x="129" y="341" width="70" height="70" rx="18" opacity=".72"/>
+    <!-- columna 2: tres celdas -->
+    <rect x="221" y="181" width="70" height="70" rx="18" opacity=".86"/>
+    <rect x="221" y="261" width="70" height="70" rx="18" opacity=".86"/>
+    <rect x="221" y="341" width="70" height="70" rx="18" opacity=".86"/>
+    <!-- columna 3: cuatro celdas -->
+    <rect x="313" y="101" width="70" height="70" rx="18"/>
+    <rect x="313" y="181" width="70" height="70" rx="18"/>
+    <rect x="313" y="261" width="70" height="70" rx="18"/>
+    <rect x="313" y="341" width="70" height="70" rx="18"/>
+  </g>
+</svg>

@@ -6,12 +6,13 @@
    - iconos y manifiesto → caché primero (no cambian)
    Subir CACHE_VERSION invalida lo viejo en la siguiente visita. */
 
-const CACHE_VERSION = "deepwork-v4";
+const CACHE_VERSION = "deepwork-v5";
 const ASSETS = [
   "./",
   "./index.html",
   "./config.js",
   "./manifest.json",
+  "./icon.svg",
   "./icon-192.png",
   "./icon-512.png"
 ];
@@ -54,8 +55,14 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
+          // Sólo se guarda lo que de verdad sirve. Antes se cacheaba
+          // cualquier respuesta: un 500 puntual del servidor sustituía la
+          // copia buena y a partir de ahí, sin conexión, la app cargaba la
+          // página de error en vez de la suya.
+          if (response && response.ok && response.type === "basic") {
+            const copy = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(() => caches.match(request).then((cached) => cached || caches.match("./index.html")))
@@ -68,7 +75,7 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((cached) => {
       const network = fetch(request)
         .then((response) => {
-          if (response && response.status === 200) {
+          if (response && response.ok && response.type === "basic") {
             const copy = response.clone();
             caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy));
           }

@@ -5,36 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Deep Work</title>
 <meta name="description" content="Registro diario de sesiones de trabajo profundo." />
-<meta name="theme-color" content="#020203" />
+<meta name="theme-color" content="#14141a" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Deep Work" />
 <link rel="manifest" href="manifest.json" />
-<link rel="icon" href="icon-192.png" />
+<!-- El SVG es el que usa la pestaña: es vectorial y sale nítido a 16 px.
+     El PNG queda de reserva para iOS, que no admite favicons en SVG. -->
+<link rel="icon" type="image/svg+xml" href="icon.svg" />
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <style>
   :root {
-    --bg: #020203;
-    --card: #0b0b0d;
-    --panel: #111113;
-    --panel-2: #17171a;
-    --line: rgba(255,255,255,.06);
-    --line-2: rgba(255,255,255,.12);
-    --text: #f2f2f5;
-    --muted: #8b8b93;
-    --dim: #5c5c63;
+    /* Paleta. Antes el fondo era casi negro (#020203) y los grises pequeños
+       se perdían: --dim sobre la tarjeta daba 2,96:1, por debajo del 4,5:1
+       que pide WCAG AA. Ahora las superficies son gris pizarra y los grises
+       de texto están subidos hasta pasar el umbral:
+         --dim   sobre --card → 5,3:1
+         --muted sobre --card → 7,6:1
+         --accent sobre --card → 4,6:1 */
+    --bg: #14141a;
+    --card: #1c1c24;
+    --panel: #232330;
+    --panel-2: #2b2b38;
+    --raised: #33333f;
+    --line: rgba(255,255,255,.09);
+    --line-2: rgba(255,255,255,.17);
+    --text: #f4f4f8;
+    --muted: #adadbd;
+    --dim: #8f8fa1;
     --accent: #5b7cff;
     --accent-deep: #3651d4;
     --good: #3ddc97;
-    --l0: #1c1c1f;
-    --l1: #1e2a63;
-    --l2: #2b3fa0;
-    --l3: #3651d4;
-    --l4: #5b7cff;
+    --veil: rgba(10,10,14,.74);
+    /* Escala de la rejilla. Es la única fuente: la leyenda y el JS la leen
+       de aquí, para que no haya que cambiar el color en tres sitios. */
+    --l0: #2f2f3d;
+    --l1: #2a3a80;
+    --l2: #3a50b4;
+    --l3: #4a65dd;
+    --l4: #7d97ff;
     --ease: cubic-bezier(.22,1,.36,1);
     --spring: cubic-bezier(.34,1.4,.64,1);
     --cell: 16px;
+    --cell-gap: 4px;
   }
 
   * { box-sizing: border-box; }
@@ -70,10 +85,18 @@
     position: relative;
     z-index: 1;
     min-height: 100vh;
+    min-height: 100dvh;   /* en el movil la barra del navegador se retrae */
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px 12px calc(24px + env(safe-area-inset-bottom));
+    /* Zona segura por los cuatro lados. Antes solo estaba la de abajo, y
+       como la app declara viewport-fit=cover con la barra de estado
+       translucida, en un iPhone con muesca la cabecera quedaba tapada por
+       el reloj, y en horizontal la muesca se comia la columna de dias. */
+    padding: calc(20px + env(safe-area-inset-top))
+             calc(12px + env(safe-area-inset-right))
+             calc(24px + env(safe-area-inset-bottom))
+             calc(12px + env(safe-area-inset-left));
   }
 
   .card {
@@ -176,11 +199,8 @@
   .btn:active { transform: scale(.95); }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn-primary { background: var(--accent-deep); color: #fff; }
-  .btn-primary:hover { background: #3f5ce6; }
   .btn-stop { background: #f2f2f5; color: #0c0c0e; }
-  .btn-stop:hover { background: #fff; }
   .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line-2); font-weight: 500; }
-  .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,.22); }
 
   /* onda al pulsar */
   .ripple {
@@ -198,26 +218,55 @@
   .grid-wrap::-webkit-scrollbar-thumb { background: var(--l0); border-radius: 99px; }
   .grid-inner { display: inline-block; min-width: 100%; }
 
-  .month-row { display: flex; gap: 4px; margin-bottom: 4px; }
+  .month-row { display: flex; gap: var(--cell-gap); margin-bottom: 4px; }
   .month-cell { width: var(--cell); font-size: 10px; color: var(--dim); white-space: nowrap; }
-  .grid-row { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
-  .day-label { width: 38px; font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .grid-row { display: flex; gap: var(--cell-gap); align-items: center; margin-bottom: var(--cell-gap); }
+  /* La columna de dias se queda fija al desplazar la rejilla: si no, al
+     abrir la app ya desplazada hasta hoy, Lun-Dom quedaban fuera de
+     pantalla y las filas no se podian identificar. */
+  .day-label {
+    width: 38px; font-size: 11px; color: var(--muted); flex-shrink: 0;
+    position: sticky; left: 0; z-index: 3;
+    background: var(--card);
+  }
 
   .cell {
     width: var(--cell); height: var(--cell); border-radius: 4px; flex-shrink: 0;
-    cursor: pointer; padding: 0; border: 1px solid rgba(255,255,255,.02);
+    cursor: pointer; padding: 0; border: 1px solid rgba(255,255,255,.03);
     background: var(--l0);
+    position: relative;
+    touch-action: manipulation;   /* sin esto, el doble toque hacia zoom */
     transition: transform .2s var(--spring), box-shadow .2s var(--ease), background .45s var(--ease);
     animation: cellIn .4s var(--ease) both;
   }
+  /* El cuadrado se ve pequeño pero la zona sensible se agranda por debajo,
+     que era el problema real: con celdas de 16px la yema tapaba cuatro a la
+     vez y se editaba el dia equivocado. */
+  .cell::after { content: ""; position: absolute; inset: calc(var(--cell-gap) / -2); }
   @keyframes cellIn { from { opacity: 0; transform: scale(.4); } }
-  .cell:hover { transform: scale(1.32); box-shadow: 0 3px 10px rgba(0,0,0,.5); z-index: 2; }
-  .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; z-index: 4; }
   .cell.today { border: 1.5px solid rgba(255,255,255,.85); }
-  .cell.future { background: transparent; border: 1px solid rgba(255,255,255,.04); cursor: default; }
-  .cell.future:hover { transform: none; box-shadow: none; }
+  .cell.future { background: transparent; border: 1px solid rgba(255,255,255,.05); cursor: default; }
+  .cell.future::after { content: none; }
   .cell.pop { animation: cellPop .6s var(--spring); }
   @keyframes cellPop { 0% { transform: scale(1); } 45% { transform: scale(1.7); } 100% { transform: scale(1); } }
+
+  /* Los efectos de raton solo donde hay raton. En una pantalla tactil el
+     :hover se queda pegado tras el toque: la celda se quedaba ampliada y el
+     tooltip no desaparecia hasta tocar en otro sitio. */
+  @media (hover: hover) and (pointer: fine) {
+    .cell:hover { transform: scale(1.32); box-shadow: 0 3px 10px rgba(0,0,0,.5); z-index: 2; }
+    .cell.future:hover { transform: none; box-shadow: none; }
+    .btn-primary:hover { background: #4a67e8; }
+    .btn-stop:hover { background: #fff; }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,.28); }
+    .step-btn:hover { background: var(--raised); }
+    .chip:hover { color: var(--text); border-color: var(--line-2); }
+    .link-btn:hover { color: var(--text); background: rgba(255,255,255,.07); }
+    .code-chip:hover { border-color: var(--accent); background: var(--raised); }
+    .metric-tab:hover { color: var(--muted); }
+    .rank-row:hover { background: rgba(255,255,255,.04); }
+  }
 
   .legend-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 8px; }
   .legend { display: flex; align-items: center; gap: 4px; }
@@ -238,26 +287,39 @@
     cursor: pointer; padding: 3px 7px; border-radius: 6px;
     transition: color .2s, background .2s;
   }
-  .link-btn:hover { color: var(--text); background: rgba(255,255,255,.05); }
 
   /* ---------- tooltip ---------- */
   .tip {
     position: fixed; z-index: 50; pointer-events: none;
-    background: #202024; border: 1px solid var(--line-2);
+    background: var(--raised); border: 1px solid var(--line-2);
     border-radius: 8px; padding: 6px 9px; font-size: 11.5px; color: var(--text);
     white-space: nowrap; box-shadow: 0 8px 24px rgba(0,0,0,.55);
     opacity: 0; transform: translate(-50%, -4px);
     transition: opacity .15s var(--ease), transform .15s var(--ease);
   }
   .tip.show { opacity: 1; transform: translate(-50%, -10px); }
+  /* cuando no cabe encima de la celda, se coloca debajo */
+  .tip.below { transform: translate(-50%, 4px); }
+  .tip.below.show { transform: translate(-50%, 10px); }
   .tip small { color: var(--dim); }
 
   /* ---------- modal ---------- */
   .backdrop {
     position: fixed; inset: 0; z-index: 60;
-    background: rgba(2,2,3,.72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center; padding: 20px;
+    background: var(--veil); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center;
     animation: fadeIn .2s var(--ease);
+    /* El teclado del movil encoge la pantalla visible pero no este fondo
+       fijo, asi que el modal quedaba centrado en la pantalla completa y los
+       botones Guardar/Cancelar caian debajo del teclado, sin manera de
+       alcanzarlos. Con scroll propio y altura maxima en dvh, el modal
+       siempre se puede desplazar hasta los botones. */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: calc(16px + env(safe-area-inset-top))
+             calc(16px + env(safe-area-inset-right))
+             calc(16px + env(safe-area-inset-bottom))
+             calc(16px + env(safe-area-inset-left));
   }
   .backdrop.closing { animation: fadeOut .18s var(--ease) forwards; }
   @keyframes fadeIn { from { opacity: 0; } }
@@ -268,6 +330,8 @@
     border-radius: 20px; padding: 22px; width: 100%; max-width: 340px;
     box-shadow: 0 30px 80px rgba(0,0,0,.7);
     animation: modalIn .32s var(--spring) both;
+    margin: auto;                 /* centrado sin romper el scroll del fondo */
+    max-height: none;
   }
   .backdrop.closing .modal { animation: modalOut .18s var(--ease) forwards; }
   @keyframes modalIn { from { opacity: 0; transform: translateY(16px) scale(.95); } }
@@ -284,15 +348,18 @@
     font-family: inherit; touch-action: manipulation;
     transition: transform .18s var(--spring), background .2s;
   }
-  .step-btn:hover { background: #202024; }
   .step-btn:active { transform: scale(.9); }
 
   input {
     background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 10px;
-    padding: 12px; color: var(--text); font-size: 15px; font-family: inherit;
+    padding: 12px; color: var(--text); font-family: inherit;
     outline: none; width: 100%; min-width: 0;
     font-variant-numeric: tabular-nums;
     transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+    /* 16px es obligatorio: por debajo, Safari en iOS amplia la pagina al
+       enfocar el campo y el modal se sale de la pantalla, sin volver solo
+       al cerrarlo. Antes estaba en 15px. */
+    font-size: 16px;
   }
   input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,124,255,.16); }
   input[type=number] { text-align: center; -moz-appearance: textfield; }
@@ -306,7 +373,6 @@
     font-family: inherit; touch-action: manipulation;
     transition: transform .18s var(--spring), background .2s, color .2s, border-color .2s;
   }
-  .chip:hover { color: var(--text); border-color: var(--line-2); }
   .chip:active { transform: scale(.93); }
 
   .modal-actions { display: flex; gap: 8px; }
@@ -330,7 +396,7 @@
     pointer-events: none;
   }
   .toast {
-    background: #202024; border: 1px solid var(--line-2); color: var(--text);
+    background: var(--raised); border: 1px solid var(--line-2); color: var(--text);
     border-radius: 12px; padding: 10px 16px; font-size: 13px;
     box-shadow: 0 12px 40px rgba(0,0,0,.6);
     animation: toastIn .38s var(--spring) both;
@@ -364,7 +430,6 @@
     font-size: 13px; letter-spacing: .12em; color: var(--text);
     transition: transform .18s var(--spring), border-color .2s, background .2s;
   }
-  .code-chip:hover { border-color: var(--accent); background: #1d1d21; }
   .code-chip:active { transform: scale(.96); }
   .code-chip .hint { font-family: inherit; font-size: 10px; letter-spacing: 0; color: var(--dim); }
 
@@ -375,7 +440,6 @@
     padding: 6px 12px; border-radius: 8px; cursor: pointer;
     transition: color .2s var(--ease), background .3s var(--ease);
   }
-  .metric-tab:hover { color: var(--muted); }
   .metric-tab.on { background: var(--panel-2); color: var(--text); }
 
   .rank-list { display: flex; flex-direction: column; gap: 2px; }
@@ -389,7 +453,6 @@
     animation: rowIn .42s var(--ease) both;
   }
   @keyframes rowIn { from { opacity: 0; transform: translateY(8px); } }
-  .rank-row:hover { background: rgba(255,255,255,.03); }
   .rank-row.me { background: rgba(91,124,255,.09); border-color: rgba(91,124,255,.26); }
 
   /* barra proporcional al mejor del grupo */
@@ -402,11 +465,13 @@
   .rank-row > *:not(.bar) { position: relative; z-index: 1; }
 
   .rank-pos {
-    width: 26px; flex-shrink: 0; text-align: center;
+    width: 30px; flex-shrink: 0; text-align: center;
     font-family: "SF Mono", ui-monospace, monospace; font-size: 13px;
     font-variant-numeric: tabular-nums; color: var(--dim); font-weight: 600;
+    display: flex; flex-direction: column; align-items: center; line-height: 1.1;
   }
   .rank-pos.medal { font-size: 15px; }
+  .rank-pos.medal .pos-num { font-size: 9px; opacity: .75; }
 
   .rank-who { flex: 1; min-width: 0; }
   .rank-name {
@@ -461,7 +526,6 @@
     .rank-head { align-items: stretch; }
     .rank-tools { width: 100%; }
     .metric-tabs { flex: 1; }
-    .metric-tab { flex: 1; }
     .stats-row { width: 100%; }
     .stat-box { flex: 1; min-width: 0; }
     .divider { display: none; }
@@ -470,6 +534,24 @@
     #timerButtons .btn { flex: 1; }
     .manual-block { width: 100%; }
     .manual-block .btn { width: 100%; }
+
+    /* Celdas mas grandes con el dedo. La rejilla ya vive dentro de un
+       contenedor con scroll propio, asi que solo supone desplazarse algo mas. */
+    :root { --cell: 22px; --cell-gap: 6px; }
+    .cell { border-radius: 5px; }
+
+    /* Objetivos tactiles de 44px. Antes los botones median 34-36px de alto
+       y los enlaces del pie 21px. */
+    .btn { min-height: 44px; padding: 11px 16px; }
+    .metric-tab { flex: 1; min-height: 40px; }
+    .chip { min-height: 38px; padding: 9px 13px; }
+    .link-btn { min-height: 40px; padding: 10px 12px; font-size: 12px; }
+    .summary { gap: 12px 14px; }
+    .code-chip { min-height: 44px; }
+
+    /* El toast se quedaba encajonado en la mitad del ancho */
+    .toast-wrap { left: 12px; right: 12px; transform: none; }
+    .toast { width: 100%; justify-content: center; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -490,10 +572,13 @@
         <div class="eyebrow">DEEP WORK</div>
         <h1>Registro diario</h1>
       </div>
-      <div class="stats-row" aria-live="polite">
-        <div class="stat-box"><div class="stat-value" id="statToday">0m</div><div class="stat-label">Hoy</div></div>
-        <div class="stat-box"><div class="stat-value" id="statWeek">0m</div><div class="stat-label">Esta semana</div></div>
-        <div class="stat-box"><div class="stat-value" id="statStreak">0 días</div><div class="stat-label">Racha</div></div>
+      <!-- Sin aria-live: durante una sesión estas cifras cambian cada minuto
+           y el lector de pantalla iba cantando números sueltos sin decir de
+           qué eran. Cada dato lleva ahora su propia etiqueta. -->
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-value" id="statToday" aria-label="Hoy: 0 minutos">0m</div><div class="stat-label" aria-hidden="true">Hoy</div></div>
+        <div class="stat-box"><div class="stat-value" id="statWeek" aria-label="Esta semana: 0 minutos">0m</div><div class="stat-label" aria-hidden="true">Esta semana</div></div>
+        <div class="stat-box"><div class="stat-value" id="statStreak" aria-label="Racha: 0 días">0 días</div><div class="stat-label" aria-hidden="true">Racha</div></div>
       </div>
     </div>
 
@@ -529,11 +614,11 @@
       <div class="hover-info" id="hoverInfo">&nbsp;</div>
       <div class="legend">
         <span class="legend-label">Menos</span>
-        <div class="legend-swatch" style="background:#1c1c1f"></div>
-        <div class="legend-swatch" style="background:#1e2a63"></div>
-        <div class="legend-swatch" style="background:#2b3fa0"></div>
-        <div class="legend-swatch" style="background:#3651d4"></div>
-        <div class="legend-swatch" style="background:#5b7cff"></div>
+        <div class="legend-swatch" style="background:var(--l0)"></div>
+        <div class="legend-swatch" style="background:var(--l1)"></div>
+        <div class="legend-swatch" style="background:var(--l2)"></div>
+        <div class="legend-swatch" style="background:var(--l3)"></div>
+        <div class="legend-swatch" style="background:var(--l4)"></div>
         <span class="legend-label">Más</span>
       </div>
     </div>
@@ -586,12 +671,18 @@ const K = {
   SESSION: "deepwork:session:v2",
   PREFS:   "deepwork:prefs:v2",
   GROUP:   "deepwork:group:v1",
+  PENDING_LEAVE: "deepwork:leave-pendiente:v1",
   OLD_LOG: "deepwork-log",
   OLD_SES: "deepwork-active-session"
 };
 
 const WEEKS_TO_SHOW = 26;
-const LEVEL_COLORS = ["#1c1c1f", "#1e2a63", "#2b3fa0", "#3651d4", "#5b7cff"];
+/* La escala sale del CSS (--l0..--l4), que es la unica fuente. Antes estaba
+   repetida en tres sitios: aqui, en la leyenda y en :root. */
+const LEVEL_COLORS = (() => {
+  const cs = getComputedStyle(document.documentElement);
+  return [0, 1, 2, 3, 4].map((i) => cs.getPropertyValue("--l" + i).trim() || "#2f2f3d");
+})();
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const LONG_SESSION_H = 5;   // por encima de esto, al volver preguntamos qué hacer
 const MIN_SAVE_MIN = 0.5;   // sesiones más cortas no se guardan
@@ -758,11 +849,19 @@ function loadSync() {
   d = mergeDocs(d, normalize(readJSON(K.BACKUP)));
   d = mergeDocs(d, normalize(readJSON(K.OLD_LOG)));
   doc = d;
+  bumpStampFloor(doc);
 
+  // La sesión se refleja siempre, también cuando ya no hay ninguna. Antes
+  // esto solo asignaba, nunca limpiaba: si parabas la sesión en otra
+  // pestaña, esta seguía contando y al pararla aquí sumaba el rato por
+  // segunda vez.
   const raw = readJSON(K.SESSION) || readJSON(K.OLD_SES);
-  if (raw && typeof raw.startedAt === "number" && raw.startedAt > 0 && raw.startedAt <= Date.now()) {
-    session = { startedAt: raw.startedAt };
-  }
+  const valida = raw && typeof raw.startedAt === "number" &&
+                 raw.startedAt > 0 && raw.startedAt <= Date.now();
+  // Con el aviso de recuperación en pantalla, K.SESSION sigue ahí a
+  // propósito (para que sobreviva a una recarga), así que no se reactiva
+  // sola: la decisión de guardarla o tirarla es del usuario.
+  session = valida && !pendingRecovery ? { startedAt: raw.startedAt } : null;
 }
 
 async function loadAsync() {
@@ -770,6 +869,7 @@ async function loadAsync() {
   const merged = mergeDocs(doc, fromIdb);
   const changed = JSON.stringify(merged.days) !== JSON.stringify(doc.days);
   doc = merged;
+  bumpStampFloor(doc);
   persist();                      // deja las tres copias al día desde el arranque
   if (changed) render();
 }
@@ -796,6 +896,17 @@ function stamp() {
   const now = Date.now();
   lastStamp = now > lastStamp ? now : lastStamp + 1;
   return lastStamp;
+}
+
+/* Pone el contador por encima del sello mas alto que ya haya guardado.
+   Sin esto, un sello con fecha futura (reloj del movil mal puesto, o un
+   dato corrupto) dejaba ese dia congelado para siempre: cada edicion
+   nueva nacia con un sello menor y la fusion la descartaba en silencio. */
+function bumpStampFloor(d) {
+  for (const key in d.days) {
+    const t = d.days[key].t || 0;
+    if (t > lastStamp) lastStamp = t;
+  }
 }
 
 function minutesOf(key) {
@@ -986,20 +1097,27 @@ function renderNotice() {
       '<button class="btn btn-ghost" id="recDrop" style="padding:8px 12px;font-size:12px">Descartar</button>' +
     '</div>';
 
-  wireButton($("recKeep"), () => {
-    commitRange(pendingRecovery.startedAt, Date.now());
-    const mins = pendingRecovery.hours * 60;
+  /* Limpia el rastro de la sesión recuperada sin tocar una que esté
+     corriendo ahora. Antes esto borraba K.SESSION a secas: si mientras el
+     aviso estaba en pantalla habías empezado una sesión nueva, se cargaba
+     su registro y al recargar la app esa sesión había desaparecido. */
+  const cerrarAviso = () => {
     pendingRecovery = null;
-    localStorage.removeItem(K.SESSION);
     localStorage.removeItem(K.OLD_SES);
+    if (session) writeJSON(K.SESSION, session);
+    else localStorage.removeItem(K.SESSION);
+  };
+
+  wireButton($("recKeep"), () => {
+    const mins = pendingRecovery.hours * 60;
+    commitRange(pendingRecovery.startedAt, Date.now());
+    cerrarAviso();
     render();
     popToday();
     toast("Guardado: " + fmtMinutes(mins));
   });
   wireButton($("recDrop"), () => {
-    pendingRecovery = null;
-    localStorage.removeItem(K.SESSION);
-    localStorage.removeItem(K.OLD_SES);
+    cerrarAviso();
     render();
     toast("Sesión descartada", true);
   });
@@ -1009,24 +1127,61 @@ function renderNotice() {
 
 let closeModal = null;
 
+let modalSeq = 0;
+
 function openModal(html, setup) {
   if (closeModal) closeModal();
   const slot = $("modalSlot");
-  slot.innerHTML = '<div class="backdrop" id="backdrop"><div class="modal" role="dialog" aria-modal="true">' + html + "</div></div>";
-  const backdrop = $("backdrop");
+  const antes = document.activeElement;          // a dónde vuelve el foco al cerrar
+  const tituloId = "modal-titulo-" + (++modalSeq);
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "backdrop";
+  backdrop.innerHTML =
+    '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="' + tituloId + '">' + html + "</div>";
+  slot.appendChild(backdrop);
+
+  const caja = backdrop.querySelector(".modal");
+  const titulo = caja.querySelector("h2");
+  if (titulo) titulo.id = tituloId;              // el diálogo tiene nombre accesible
 
   const close = () => {
     backdrop.classList.add("closing");
-    setTimeout(() => { slot.innerHTML = ""; }, 200);
-    document.removeEventListener("keydown", onKey);
+    // Se retira este backdrop concreto, no todo el contenedor: antes el
+    // temporizador de 200 ms vaciaba el hueco entero y se llevaba por
+    // delante el modal que se acabara de abrir encima.
+    setTimeout(() => backdrop.remove(), 200);
+    document.removeEventListener("keydown", onKey, true);
     closeModal = null;
+    if (antes && antes.focus) { try { antes.focus(); } catch (e) { /* ya no existe */ } }
   };
-  const onKey = (e) => { if (e.key === "Escape") close(); };
+
+  const enfocables = () => caja.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+
+  const onKey = (e) => {
+    if (e.key === "Escape") { e.preventDefault(); close(); return; }
+    if (e.key !== "Tab") return;
+    // El foco se queda dentro del diálogo mientras esté abierto.
+    const lista = enfocables();
+    if (!lista.length) return;
+    const primero = lista[0], ultimo = lista[lista.length - 1];
+    if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+  };
 
   backdrop.addEventListener("mousedown", (e) => { if (e.target === backdrop) close(); });
-  document.addEventListener("keydown", onKey);
+  document.addEventListener("keydown", onKey, true);
   closeModal = close;
   setup(close);
+
+  // Si nadie ha pedido el foco, se lo lleva el propio diálogo, para que un
+  // lector de pantalla lo anuncie y el tabulador no siga en la página.
+  if (!caja.contains(document.activeElement)) {
+    caja.setAttribute("tabindex", "-1");
+    caja.focus();
+  }
 }
 
 function openDayEditor(key) {
@@ -1172,12 +1327,32 @@ function importData(file) {
 function liveMinutes() {
   return session ? (Date.now() - session.startedAt) / 60000 : 0;
 }
+
+/* Parte de la sesion en marcha que cae dentro de un dia concreto. Antes se
+   sumaba entera a "hoy", asi que una sesion empezada a las 23:30 aparecia
+   a las 00:15 como 45 minutos del dia nuevo, cuando media hora era de ayer.
+   Al pararla, commitRange() si repartia bien, y las cifras daban un salto.
+   El final del dia se calcula con setDate y no sumando 24 horas, para que
+   los domingos de cambio de hora (23 o 25 horas) salgan bien. */
+function liveMinutesOn(key) {
+  if (!session) return 0;
+  const inicio = keyToDate(key);
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + 1);
+  const desde = Math.max(session.startedAt, inicio.getTime());
+  const hasta = Math.min(Date.now(), fin.getTime());
+  return hasta > desde ? (hasta - desde) / 60000 : 0;
+}
+
 function minutesForDay(key) {
-  const base = minutesOf(key);
-  return key === lastTodayKey ? base + liveMinutes() : base;
+  return minutesOf(key) + liveMinutesOn(key);
 }
 
 function render() {
+  // El día se recalcula en cada pintado. Si no, tras pasar la medianoche
+  // con la app abierta, la barra de objetivo seguía midiendo contra el día
+  // anterior porque lastTodayKey se había quedado atrás.
+  lastTodayKey = dateKey(new Date());
   document.body.classList.toggle("running", !!session);
   renderTimer();
   renderNotice();
@@ -1234,9 +1409,16 @@ function updateStats() {
   const nextWeek = fmtMinutes(totalWeek);
   const nextStreak = streak + " día" + (streak === 1 ? "" : "s");
 
-  if (nextToday !== lastStats.today) { $("statToday").textContent = nextToday; if (lastStats.today !== null) bump($("statToday").parentElement); }
-  if (nextWeek !== lastStats.week) { $("statWeek").textContent = nextWeek; if (lastStats.week !== null) bump($("statWeek").parentElement); }
-  if (nextStreak !== lastStats.streak) { $("statStreak").textContent = nextStreak; if (lastStats.streak !== null) bump($("statStreak").parentElement); }
+  const pinta = (id, valor, anterior, etiqueta) => {
+    if (valor === anterior) return;
+    const el = $(id);
+    el.textContent = valor;
+    el.setAttribute("aria-label", etiqueta + ": " + valor);
+    if (anterior !== null) bump(el.parentElement);
+  };
+  pinta("statToday", nextToday, lastStats.today, "Hoy");
+  pinta("statWeek", nextWeek, lastStats.week, "Esta semana");
+  pinta("statStreak", nextStreak, lastStats.streak, "Racha");
 
   lastStats = { today: nextToday, week: nextWeek, streak: nextStreak };
   updateGoal(totalToday);
@@ -1307,8 +1489,11 @@ function renderGrid() {
       const style = "animation-delay:" + Math.min(col * 9 + row * 5, 500) + "ms;" +
                     (future ? "" : "background:" + LEVEL_COLORS[levelFor(mins)] + ";");
       const label = date.toLocaleDateString("es-ES", { day: "numeric", month: "long" }) + ", " + fmtMinutes(mins);
+      // Sólo hoy queda en el orden de tabulación; al resto se llega con las flechas.
+      const tab = future ? "-1" : (key === todayKey ? "0" : "-1");
       rowsHtml += "<button type=\"button\" class=\"" + classes.join(" ") + "\" data-key=\"" + key + "\"" +
-                  (future ? " disabled aria-hidden=\"true\" tabindex=\"-1\"" : ' aria-label="' + label + '"') +
+                  ' tabindex="' + tab + '"' +
+                  (future ? " disabled aria-hidden=\"true\"" : ' aria-label="' + label + '"') +
                   ' style="' + style + '"></button>';
     });
     rowsHtml += "</div>";
@@ -1343,9 +1528,24 @@ function showTip(cell) {
   tip.innerHTML = "<b>" + fmtMinutes(mins) + "</b> <small>· " +
     date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" }) + "</small>";
   const rect = cell.getBoundingClientRect();
-  tip.style.left = (rect.left + rect.width / 2) + "px";
-  tip.style.top = (rect.top - 4) + "px";
+
+  // Se mide una vez visible para poder encajarlo dentro de la pantalla:
+  // en las columnas de los extremos se salía por el lado, y en la fila del
+  // lunes se salía por arriba.
   tip.classList.add("show");
+  tip.style.left = "0px";
+  tip.style.top = "0px";
+  const ancho = tip.offsetWidth;
+  const alto = tip.offsetHeight;
+  const margen = 8;
+
+  const centro = rect.left + rect.width / 2;
+  tip.style.left = clamp(centro, margen + ancho / 2, innerWidth - margen - ancho / 2) + "px";
+
+  const arriba = rect.top - 4;
+  const cabeArriba = rect.top - alto - 14 >= margen;
+  tip.classList.toggle("below", !cabeArriba);
+  tip.style.top = (cabeArriba ? arriba : rect.bottom + alto + 14) + "px";
 
   $("hoverInfo").textContent =
     capitalize(date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" })) + " · " + fmtMinutes(mins);
@@ -1376,20 +1576,38 @@ let metric = (prefs.metric === "today" || prefs.metric === "total") ? prefs.metr
 let syncState = { state: "idle", at: 0, error: null };
 let boardFresh = false;                 // la entrada escalonada sólo al traer datos nuevos
 let pushTimer = null;
-let pushing = false;
+let pushing = null;      // promesa del envio en curso, o null
 let pushAgain = false;
+
+const RPC_TIMEOUT = 12000;
 
 async function rpc(fn, args) {
   const base = String(SUPA.SUPABASE_URL).replace(/\/+$/, "");
-  const res = await fetch(base + "/rest/v1/rpc/" + fn, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SUPA.SUPABASE_KEY,
-      Authorization: "Bearer " + SUPA.SUPABASE_KEY
-    },
-    body: JSON.stringify(args)
-  });
+  // Con una red que acepta la conexión y luego no contesta (típico de un
+  // wifi de bar), fetch se queda esperando indefinidamente: el ranking se
+  // quedaba en "Sincronizando…" para siempre y, como pushing seguía en
+  // true, ningún envío posterior salía ya nunca.
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const corte = ctrl ? setTimeout(() => ctrl.abort(), RPC_TIMEOUT) : null;
+
+  let res;
+  try {
+    res = await fetch(base + "/rest/v1/rpc/" + fn, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPA.SUPABASE_KEY,
+        Authorization: "Bearer " + SUPA.SUPABASE_KEY
+      },
+      body: JSON.stringify(args),
+      signal: ctrl ? ctrl.signal : undefined
+    });
+  } catch (e) {
+    throw new Error(e && e.name === "AbortError" ? "La conexión ha tardado demasiado" : "Sin conexión");
+  } finally {
+    if (corte) clearTimeout(corte);
+  }
+
   const text = await res.text();
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch (e) { /* respuesta vacía */ }
@@ -1406,11 +1624,14 @@ function saveGroup() {
 
 /* --------------------------- enviar minutos ------------------------- */
 
+/* Van también los días a cero. dw_push sólo hace upsert, así que si se
+   omitían, vaciar un día no lo borraba del ranking: el servidor se quedaba
+   con la cifra vieja para siempre y seguías apareciendo con horas que ya
+   habías quitado. */
 function daysPayload() {
   const out = {};
   for (const key in doc.days) {
-    const mins = doc.days[key].m;
-    if (mins > 0) out[key] = Math.round(mins * 10) / 10;
+    out[key] = Math.round(doc.days[key].m * 10) / 10;
   }
   return out;
 }
@@ -1418,49 +1639,89 @@ function daysPayload() {
 function schedulePush() {
   if (!group || !supaReady()) return;
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(pushNow, 2500);   // agrupa ráfagas de ediciones
+  // Agrupa ráfagas de ediciones, y al terminar recarga el ranking: si no,
+  // tras editar un día tu propia fila seguía mostrando la cifra anterior
+  // hasta que pulsabas Actualizar a mano.
+  pushTimer = setTimeout(() => {
+    pushNow().then(() => { if (syncState.state === "ok") fetchBoard(true); });
+  }, 2500);
 }
 
-async function pushNow() {
-  if (!group || !supaReady()) return;
-  if (pushing) { pushAgain = true; return; }   // nunca dos envíos a la vez
-  pushing = true;
+/* Devuelve siempre la promesa del envío en curso. Antes, si ya había uno en
+   vuelo, esto salía de vuelta al instante: "Actualizar" pedía el ranking sin
+   esperar a que el envío llegase, pintaba datos anteriores a tus propios
+   cambios y aun así anunciaba "Ranking actualizado". */
+function pushNow() {
+  if (!group || !supaReady()) return Promise.resolve();
+  if (pushing) { pushAgain = true; return pushing; }
   clearTimeout(pushTimer);
   syncState = { state: "sending", at: syncState.at, error: null };
   renderSync();
-  try {
-    await rpc("dw_push", {
-      p_member: group.memberId,
-      p_secret: group.secret,
-      p_days: daysPayload(),
-      p_nickname: null
-    });
-    syncState = { state: "ok", at: Date.now(), error: null };
-  } catch (e) {
-    syncState = { state: "error", at: syncState.at, error: e.message };
-  }
-  pushing = false;
-  renderSync();
-  if (pushAgain) { pushAgain = false; schedulePush(); }
+
+  const quien = group.memberId;
+  pushing = (async () => {
+    try {
+      await rpc("dw_push", {
+        p_member: quien,
+        p_secret: group.secret,
+        p_days: daysPayload(),
+        p_nickname: null
+      });
+      syncState = { state: "ok", at: Date.now(), error: null };
+    } catch (e) {
+      syncState = { state: "error", at: syncState.at, error: e.message };
+    }
+    pushing = null;
+    renderSync();
+    if (pushAgain) { pushAgain = false; schedulePush(); }
+  })();
+
+  return pushing;
 }
 
 async function fetchBoard(silent) {
   if (!group || !supaReady()) return;
+  const codigo = group.code;              // el grupo puede cambiar durante la espera
   boardLoading = true;
   boardError = null;
   if (!silent) renderRanking();
+  let datos = null, fallo = null;
   try {
-    board = await rpc("dw_leaderboard", { p_code: group.code, p_today: dateKey(new Date()) });
-    boardFresh = true;
-    if (board && board.name && board.name !== group.name) { group.name = board.name; saveGroup(); }
+    datos = await rpc("dw_leaderboard", { p_code: codigo, p_today: dateKey(new Date()) });
   } catch (e) {
-    boardError = e.message;
+    fallo = e.message;
   }
   boardLoading = false;
+  // Si mientras tanto has salido del grupo o te has cambiado a otro, esta
+  // respuesta ya no vale: antes resucitaba el ranking del grupo abandonado.
+  if (!group || group.code !== codigo) { renderRanking(); return; }
+
+  if (datos) {
+    board = datos;
+    boardFresh = true;
+    if (datos.name && datos.name !== group.name) { group.name = datos.name; saveGroup(); }
+  } else {
+    boardError = fallo;
+  }
   renderRanking();
 }
 
+/* Reintenta las bajas de grupo que se quedaron sin enviar. */
+async function flushPendingLeaves() {
+  if (!supaReady()) return;
+  const cola = readJSON(K.PENDING_LEAVE);
+  if (!cola || !cola.length) return;
+  const quedan = [];
+  for (const credenciales of cola) {
+    try { await rpc("dw_leave", credenciales); }
+    catch (e) { quedan.push(credenciales); }
+  }
+  if (quedan.length) writeJSON(K.PENDING_LEAVE, quedan);
+  else localStorage.removeItem(K.PENDING_LEAVE);
+}
+
 async function syncNow(announce) {
+  flushPendingLeaves();
   await pushNow();
   await fetchBoard(true);
   if (announce) toast(boardError ? "No se ha podido actualizar" : "Ranking actualizado", !!boardError);
@@ -1570,16 +1831,21 @@ function renderRanking() {
   body.innerHTML = '<div class="rank-list">' + rows.map((r, i) => {
     const value = r[metric];
     const width = clamp((value / top) * 100, 0, 100);
-    const medal = i < 3 && value > 0 ? medals[i] : String(i + 1);
+    // El puesto se escribe siempre en número; la medalla es adorno. Antes el
+    // emoji sustituía a la cifra, y quien no lo vea (lector de pantalla, o
+    // una fuente sin ese emoji) se quedaba sin saber la posición.
+    const conMedalla = i < 3 && value > 0;
+    const puesto = '<span aria-hidden="true">' + (conMedalla ? medals[i] : "") + "</span>" +
+                   '<span class="pos-num">' + (i + 1) + "</span>";
     const sub = [];
-    if (r.streak > 0) sub.push("🔥 " + r.streak + " día" + (r.streak === 1 ? "" : "s"));
+    if (r.streak > 0) sub.push('<span aria-hidden="true">🔥</span> ' + r.streak + " día" + (r.streak === 1 ? "" : "s") + " seguido" + (r.streak === 1 ? "" : "s"));
     if (metric !== "total") sub.push("total " + fmtMinutes(r.total));
     if (!r.lastDay && !value) sub.push("sin registrar nada aún");
 
     const anim = boardFresh ? "animation-delay:" + Math.min(i * 45, 400) + "ms" : "animation:none";
     return '<div class="rank-row' + (r.mine ? " me" : "") + '" style="' + anim + '">' +
-      '<div class="bar" style="width:' + width + '%"></div>' +
-      '<div class="rank-pos' + (i < 3 && value > 0 ? " medal" : "") + '">' + medal + "</div>" +
+      '<div class="bar" aria-hidden="true" style="width:' + width + '%"></div>' +
+      '<div class="rank-pos' + (conMedalla ? " medal" : "") + '">' + puesto + "</div>" +
       '<div class="rank-who">' +
         '<div class="rank-name">' + escapeHtml(r.nickname) + (r.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
         (sub.length ? '<div class="rank-sub">' + sub.join(" · ") + "</div>" : "") +
@@ -1639,16 +1905,25 @@ function copyCode() {
 /* ------------------------------ diálogos ---------------------------- */
 
 function showModalError(message) {
-  const box = document.querySelector(".modal .error");
+  // Si la petición falla después de cerrar el diálogo no hay dónde pintar el
+  // error: antes esto reventaba con un TypeError al leer parentNode de null.
+  const caja = document.querySelector(".modal");
+  if (!caja) { toast(message, true); return; }
+
+  const box = caja.querySelector(".error");
   if (box) { box.textContent = message; return; }
-  const fields = document.querySelector(".modal .fields");
+
   const el = document.createElement("div");
   el.className = "error";
+  el.setAttribute("role", "alert");
   el.textContent = message;
-  fields.parentNode.insertBefore(el, fields);
+  const fields = caja.querySelector(".fields");
+  if (fields) fields.parentNode.insertBefore(el, fields);
+  else caja.insertBefore(el, caja.querySelector(".modal-actions") || null);
 }
 
 function busy(button, isBusy, label) {
+  if (!button) return;
   button.disabled = isBusy;
   button.style.opacity = isBusy ? ".6" : "";
   button.textContent = isBusy ? "…" : label;
@@ -1672,6 +1947,7 @@ function openCreateGroup() {
       $("gName").focus();
       const submit = async () => {
         const button = $("gCreate");
+        if (button.disabled) return;   // Enter repetido no dispara varios envios
         busy(button, true, "Crear");
         try {
           const data = await rpc("dw_create_group", { p_name: $("gName").value, p_nickname: $("gNick").value });
@@ -1715,6 +1991,7 @@ function openJoinGroup() {
       $("gCode").focus();
       const submit = async () => {
         const button = $("gJoin");
+        if (button.disabled) return;   // Enter repetido no dispara varios envios
         busy(button, true, "Entrar");
         try {
           const data = await rpc("dw_join_group", { p_code: $("gCode").value, p_nickname: $("gNick").value });
@@ -1756,6 +2033,7 @@ function openRename() {
       $("gNick").select();
       const submit = async () => {
         const button = $("gSave");
+        if (button.disabled) return;   // Enter repetido no dispara varios envios
         busy(button, true, "Guardar");
         try {
           await rpc("dw_push", {
@@ -1793,15 +2071,28 @@ function openLeave() {
       wireButton($("gCancel"), close);
       wireButton($("gLeave"), async () => {
         const button = $("gLeave");
+        if (button.disabled) return;
         busy(button, true, "Salir");
-        try { await rpc("dw_leave", { p_member: group.memberId, p_secret: group.secret }); }
-        catch (e) { /* si el servidor no responde, salimos igual en local */ }
+        const credenciales = { p_member: group.memberId, p_secret: group.secret };
+        let entregado = true;
+        try {
+          await rpc("dw_leave", credenciales);
+        } catch (e) {
+          // Sin conexión salíamos igual en local y el miembro se quedaba
+          // huérfano en el servidor: seguías apareciendo en el ranking de
+          // los demás y tu apodo quedaba pillado para siempre. Ahora la
+          // baja queda pendiente y se reintenta al recuperar la red.
+          entregado = false;
+          const cola = readJSON(K.PENDING_LEAVE) || [];
+          cola.push(credenciales);
+          writeJSON(K.PENDING_LEAVE, cola);
+        }
         group = null;
         board = null;
         saveGroup();
         close();
         renderRanking();
-        toast("Has salido del grupo");
+        toast(entregado ? "Has salido del grupo" : "Fuera del grupo · la baja se enviará al recuperar la conexión", !entregado);
       });
     }
   );
@@ -1836,9 +2127,46 @@ rows.addEventListener("mouseover", (e) => {
 rows.addEventListener("mouseleave", hideTip);
 rows.addEventListener("focusin", (e) => {
   const cell = e.target.closest(".cell");
-  if (cell && !cell.disabled) showTip(cell);
+  if (cell && !cell.disabled) { moverFoco(cell); showTip(cell); }
 });
 rows.addEventListener("focusout", hideTip);
+
+// En táctil el tooltip se quedaba puesto hasta tocar en otro sitio.
+rows.addEventListener("touchstart", hideTip, { passive: true });
+$("gridWrap").addEventListener("scroll", hideTip, { passive: true });
+window.addEventListener("scroll", hideTip, { passive: true });
+
+/* Navegación por teclado de la rejilla. Antes las 182 celdas estaban todas
+   en el orden de tabulación: llegar al pie de la página exigía 182 pulsaciones
+   de Tab. Ahora sólo una celda es tabulable y dentro se anda con las flechas,
+   que es como se recorre una cuadrícula. */
+function moverFoco(cell) {
+  rows.querySelectorAll('.cell[tabindex="0"]').forEach((c) => c.setAttribute("tabindex", "-1"));
+  cell.setAttribute("tabindex", "0");
+}
+
+rows.addEventListener("keydown", (e) => {
+  const cell = e.target.closest(".cell");
+  if (!cell) return;
+  const salto = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!salto && e.key !== "Home" && e.key !== "End") return;
+  e.preventDefault();
+
+  const libres = [...rows.querySelectorAll(".cell:not(.future)")];
+  if (e.key === "Home") { const c = libres[0]; if (c) { moverFoco(c); c.focus(); } return; }
+  if (e.key === "End") { const c = libres[libres.length - 1]; if (c) { moverFoco(c); c.focus(); } return; }
+
+  const fila = cell.parentElement;
+  const filas = [...rows.querySelectorAll(".grid-row")];
+  const y = filas.indexOf(fila);
+  const x = [...fila.querySelectorAll(".cell")].indexOf(cell);
+  const destinoFila = filas[y + salto[1]];
+  if (!destinoFila) return;
+  const destino = [...destinoFila.querySelectorAll(".cell")][x + salto[0]];
+  if (!destino || destino.classList.contains("future")) return;
+  moverFoco(destino);
+  destino.focus();
+});
 
 wireButton($("manualOpenBtn"), () => openDayEditor(dateKey(new Date())));
 wireButton($("goalBtn"), openGoalEditor);
@@ -1852,7 +2180,12 @@ $("importFile").addEventListener("change", (e) => {
 // atajo de teclado: S para empezar o terminar
 document.addEventListener("keydown", (e) => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
-  if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+  // Con un diálogo abierto el atajo no manda: antes, escribir un apodo con
+  // ese sonido arrancaba o paraba la sesión sin que se viera.
+  if (closeModal) return;
+  const activo = document.activeElement;
+  if (activo && /^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName)) return;
+  if (activo && activo.isContentEditable) return;
   if (e.key === "s" || e.key === "S") {
     e.preventDefault();
     session ? stopSession() : startSession();
