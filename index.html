@@ -87,7 +87,9 @@
     min-height: 100vh;
     min-height: 100dvh;   /* en el movil la barra del navegador se retrae */
     display: flex;
-    align-items: center;
+    /* Sin centrado vertical: ahora el contenido es alto y centrarlo sólo
+       servía para dejar la primera pantalla a medias. */
+    align-items: flex-start;
     justify-content: center;
     /* Zona segura por los cuatro lados. Antes solo estaba la de abajo, y
        como la app declara viewport-fit=cover con la barra de estado
@@ -110,81 +112,137 @@
   }
   @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.99); } }
 
-  /* ---------- cabecera ---------- */
-  .header-row {
-    display: flex; justify-content: space-between; align-items: flex-end;
-    flex-wrap: wrap; gap: 14px; margin-bottom: 16px;
-  }
   .eyebrow { font-size: 11px; letter-spacing: .14em; color: var(--accent); font-weight: 700; margin-bottom: 4px; }
-  h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -.01em; }
 
-  .stats-row { display: flex; gap: 8px; }
-  .stat-box {
-    background: var(--panel-2); border: 1px solid var(--line);
-    border-radius: 12px; padding: 8px 12px; min-width: 74px; text-align: center;
-    transition: transform .35s var(--spring), border-color .35s var(--ease);
+  /* ---------- barra superior ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 0 4px 2px;
   }
-  .stat-box.bump { transform: translateY(-3px); border-color: rgba(91,124,255,.45); }
-  .stat-value {
-    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
-    font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums;
+  .brand { font-size: 11px; letter-spacing: .16em; color: var(--accent); font-weight: 700; }
+  .group-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--card); border: 1px solid var(--line-2);
+    border-radius: 99px; padding: 7px 13px; min-height: 36px;
+    color: var(--text); font-family: inherit; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; max-width: 62vw; touch-action: manipulation;
+    transition: transform .18s var(--spring), border-color .2s, background .2s;
   }
-  .stat-label { font-size: 10px; color: var(--dim); margin-top: 2px; }
+  .group-chip:active { transform: scale(.96); }
+  .group-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .group-chip .chip-tag {
+    font-size: 9px; letter-spacing: .08em; font-weight: 700;
+    background: rgba(91,124,255,.18); color: var(--accent);
+    border-radius: 5px; padding: 2px 5px; flex-shrink: 0;
+  }
+  .group-chip .chip-live {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: var(--good); font-weight: 600; flex-shrink: 0;
+  }
 
-  /* ---------- objetivo del dia ---------- */
-  .goal { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; }
-  .goal-bar {
-    position: relative; flex: 1; height: 6px; border-radius: 99px;
-    background: var(--l0); overflow: hidden;
-  }
-  .goal-fill {
-    position: absolute; inset: 0 auto 0 0; width: 0%;
-    border-radius: 99px;
-    background: linear-gradient(90deg, var(--accent-deep), var(--accent));
-    transition: width .7s var(--ease), background .4s var(--ease);
-  }
-  .goal-fill.done { background: linear-gradient(90deg, #2fa877, var(--good)); }
-  .goal-fill::after {
-    content: ""; position: absolute; inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
-    transform: translateX(-100%);
-  }
-  .goal-fill.done::after { animation: sheen 2.2s var(--ease) .1s 2; }
-  @keyframes sheen { to { transform: translateX(100%); } }
-  .goal-text { font-size: 11px; color: var(--dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
-
-  /* ---------- panel de control ---------- */
-  .control-panel {
-    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 16px; padding: 14px 18px; margin-bottom: 20px;
+  /* ---------- el escenario: anillo + cifra ---------- */
+  .stage {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 18px; padding: 26px 20px 20px;
     transition: border-color .5s var(--ease), box-shadow .5s var(--ease);
   }
-  body.running .control-panel {
-    border-color: rgba(91,124,255,.3);
-    box-shadow: 0 0 0 1px rgba(91,124,255,.08), 0 10px 40px rgba(54,81,212,.14);
+  body.running .stage {
+    border-color: rgba(91,124,255,.32);
+    box-shadow: 0 0 0 1px rgba(91,124,255,.08), 0 14px 50px rgba(54,81,212,.16);
   }
 
-  .timer-block { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .pulse {
-    width: 8px; height: 8px; border-radius: 99px; background: var(--dim);
-    transition: background .4s var(--ease); flex-shrink: 0;
+  .dial-wrap {
+    position: relative;
+    width: clamp(232px, 74vw, 320px);
+    aspect-ratio: 1;
+    display: grid; place-items: center;
   }
-  body.running .pulse { background: var(--accent); animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(91,124,255,.5); }
-    50% { box-shadow: 0 0 0 7px rgba(91,124,255,0); }
+  .dial { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  .dial-track, .dial-arc {
+    fill: none; stroke-width: 9; stroke-linecap: round;
   }
+  .dial-track { stroke: var(--l0); }
+  /* Anillo en SVG y no en conic-gradient: @property no existe en Safari
+     anterior al 16.4 ni en Firefox anterior al 128, y sin @property el
+     conic-gradient no se puede animar. stroke-dashoffset anima en todas
+     partes y escala solo con el viewBox. */
+  .dial-arc {
+    stroke: var(--accent);
+    stroke-dasharray: 552.92;            /* 2·π·88 */
+    stroke-dashoffset: 552.92;
+    transition: stroke-dashoffset .8s var(--ease), stroke .45s var(--ease);
+  }
+  .dial-arc.done { stroke: var(--good); }
+  body.running .dial-wrap::after {
+    content: ""; position: absolute; inset: 6%;
+    border-radius: 50%; pointer-events: none;
+    box-shadow: 0 0 60px rgba(91,124,255,.30);
+    animation: halo 5.5s ease-in-out infinite;
+  }
+  @keyframes halo { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 
-  .timer-clock {
+  .dial-face {
+    position: relative; z-index: 1; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    padding: 0 16%;
+  }
+  .dial-state {
+    font-size: 10.5px; letter-spacing: .16em; font-weight: 700;
+    color: var(--dim); transition: color .4s var(--ease);
+  }
+  body.running .dial-state { color: var(--accent); }
+  .dial-clock {
     font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
-    font-size: 20px; min-width: 104px; opacity: .3;
-    font-variant-numeric: tabular-nums;
-    transition: opacity .4s var(--ease);
+    font-size: clamp(40px, 13.5vw, 62px);
+    font-weight: 600; letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums; line-height: 1;
+    opacity: .55; transition: opacity .4s var(--ease);
+    white-space: nowrap;
   }
-  .timer-clock.active { opacity: 1; }
+  /* H:MM:SS son ocho caracteres: no caben al tamaño de MM:SS */
+  .dial-clock.long { font-size: clamp(29px, 9.6vw, 46px); }
+  body.running .dial-clock { opacity: 1; }
+  .dial-goal {
+    font-size: 12px; color: var(--dim);
+    font-variant-numeric: tabular-nums; line-height: 1.35;
+  }
 
-  #timerButtons { display: flex; gap: 8px; }
+  .stage-actions { display: flex; gap: 8px; width: 100%; max-width: 340px; }
+  .stage-actions .btn { flex: 1; min-height: 50px; font-size: 14px; }
+  .stage-actions .btn-ghost { flex: 0 0 auto; padding-left: 18px; padding-right: 18px; }
+
+  .mini-stats { display: flex; gap: 10px; width: 100%; max-width: 340px; }
+  .mini {
+    flex: 1; min-width: 0; text-align: center;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 9px 6px;
+    transition: transform .35s var(--spring), border-color .35s var(--ease);
+  }
+  .mini.bump { transform: translateY(-3px); border-color: rgba(91,124,255,.45); }
+  .mini-value {
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .mini-label { font-size: 10px; color: var(--dim); margin-top: 2px; }
+
+  .stage-add { margin-top: -4px; }
+
+  /* ---------- historial plegado ---------- */
+  .fold { padding: 0; }
+  .fold-head {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    padding: 16px 20px; cursor: pointer; list-style: none;
+    border-radius: 24px; user-select: none;
+  }
+  .fold-head::-webkit-details-marker { display: none; }
+  .fold-head::after {
+    content: "▾"; margin-left: auto; color: var(--dim); font-size: 12px;
+    transition: transform .25s var(--ease);
+  }
+  .fold[open] .fold-head::after { transform: rotate(180deg); }
+  .fold-title { font-size: 15px; font-weight: 650; }
+  .fold-sub { font-size: 11.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .fold-body { padding: 0 20px 18px; }
 
   .btn {
     position: relative; overflow: hidden;
@@ -407,6 +465,73 @@
   @keyframes toastIn { from { opacity: 0; transform: translateY(18px) scale(.94); } }
   @keyframes toastOut { to { opacity: 0; transform: translateY(10px) scale(.97); } }
 
+  /* ---------- hoja de grupos ----------
+     Descubrir es hojear: hace falta alto y scroll, no un modal de 340px. */
+  .sheet-back {
+    position: fixed; inset: 0; z-index: 70;
+    background: var(--veil); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    display: flex; align-items: flex-end; justify-content: center;
+    animation: fadeIn .2s var(--ease);
+  }
+  .sheet-back.closing { animation: fadeOut .18s var(--ease) forwards; }
+  .sheet {
+    background: var(--card); border: 1px solid var(--line-2);
+    border-radius: 24px 24px 0 0;
+    width: 100%; max-width: 560px;
+    max-height: 92dvh; display: flex; flex-direction: column;
+    animation: sheetIn .34s var(--spring) both;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .sheet-back.closing .sheet { animation: sheetOut .2s var(--ease) forwards; }
+  @keyframes sheetIn { from { transform: translateY(30px); opacity: 0; } }
+  @keyframes sheetOut { to { transform: translateY(20px); opacity: 0; } }
+  @media (min-width: 600px) {
+    .sheet-back { align-items: center; }
+    .sheet { border-radius: 22px; max-height: 84dvh; }
+  }
+
+  .sheet-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 20px 12px; border-bottom: 1px solid var(--line);
+  }
+  .sheet-head h2 { margin: 0; font-size: 17px; font-weight: 650; flex: 1; }
+  .sheet-body { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 14px 20px 6px; flex: 1; }
+  .sheet-foot {
+    display: flex; gap: 8px; padding: 12px 20px 18px;
+    border-top: 1px solid var(--line);
+  }
+  .sheet-foot .btn { flex: 1; min-height: 46px; }
+
+  .glist { display: flex; flex-direction: column; gap: 8px; }
+  .gcard {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; padding: 13px 14px;
+    animation: rowIn .38s var(--ease) both;
+  }
+  .gcard-who { flex: 1; min-width: 0; }
+  .gcard-name {
+    font-size: 14.5px; font-weight: 650;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .gcard-sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
+  .gcard-sub .viva { color: var(--good); font-weight: 600; }
+  .gcard .btn { min-height: 40px; padding: 9px 16px; flex-shrink: 0; }
+  .gcard.actual { border-color: rgba(91,124,255,.3); background: rgba(91,124,255,.07); }
+
+  .sheet-empty { text-align: center; color: var(--dim); font-size: 13px; padding: 26px 10px; line-height: 1.6; }
+
+  .switch-row {
+    display: flex; align-items: flex-start; gap: 11px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 13px; margin-bottom: 14px;
+    cursor: pointer;
+  }
+  .switch-row input { width: auto; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--accent); }
+  .switch-text { font-size: 12.5px; line-height: 1.5; }
+  .switch-text b { display: block; font-size: 13px; margin-bottom: 2px; font-weight: 650; }
+  .switch-text span { color: var(--dim); }
+
   .sr-only {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
@@ -432,6 +557,87 @@
   }
   .code-chip:active { transform: scale(.96); }
   .code-chip .hint { font-family: inherit; font-size: 10px; letter-spacing: 0; color: var(--dim); }
+
+  /* ---------- pestañas Gente / Ranking ---------- */
+  .view-tabs { display: flex; gap: 4px; background: var(--panel); border-radius: 10px; padding: 3px; }
+  .view-tab {
+    border: none; background: transparent; color: var(--dim);
+    font-family: inherit; font-size: 12.5px; font-weight: 600;
+    padding: 8px 14px; min-height: 38px; border-radius: 8px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: color .2s var(--ease), background .3s var(--ease);
+  }
+  .view-tab.on { background: var(--panel-2); color: var(--text); }
+  .view-tab .badge {
+    font-size: 10px; font-weight: 700; border-radius: 5px; padding: 2px 5px;
+    background: rgba(61,220,151,.16); color: var(--good);
+  }
+
+  /* ---------- tabla de gente ---------- */
+  .people { display: flex; flex-direction: column; gap: 2px; }
+  .person {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 12px; border-radius: 12px;
+    border: 1px solid transparent;
+    content-visibility: auto; contain-intrinsic-size: auto 58px;
+    transition: background .25s var(--ease), border-color .25s var(--ease);
+  }
+  .person.me { background: rgba(91,124,255,.09); border-color: rgba(91,124,255,.26); }
+  .people.denso .person { padding: 7px 12px; }
+  .people.holgado .person { padding: 14px 12px; }
+
+  .mono {
+    width: 32px; height: 32px; flex-shrink: 0; border-radius: 10px;
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: var(--l2);
+  }
+  .people.denso .mono { width: 26px; height: 26px; font-size: 11px; border-radius: 8px; }
+
+  /* Cuatro estados con FORMA distinta, no sólo color: cuatro tonos de
+     verde no los distingue nadie, y menos un 8 % de los hombres. El texto
+     de al lado dice siempre lo mismo que el punto. */
+  .dot-state { width: 9px; height: 9px; border-radius: 99px; flex-shrink: 0; }
+  .dot-state.sesion { background: var(--good); animation: latir 2s ease-in-out infinite; }
+  .dot-state.dormido { background: transparent; border: 2px solid var(--good); }
+  .dot-state.linea { background: var(--good); opacity: .45; }
+  .dot-state.fuera { background: var(--dim); opacity: .5; }
+  .dot-state.oculto { background: transparent; border: 1px dashed var(--dim); }
+  @keyframes latir {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(61,220,151,.55); }
+    50% { box-shadow: 0 0 0 6px rgba(61,220,151,0); }
+  }
+
+  .person-who { flex: 1; min-width: 0; }
+  .person-name {
+    font-size: 14px; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .person-name .you {
+    font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--accent);
+    margin-left: 6px; vertical-align: 1px;
+  }
+  .person-sub {
+    font-size: 11.5px; color: var(--dim); margin-top: 2px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .person-sub.viva { color: var(--good); }
+  .people.denso .person-sub { display: none; }
+  .person-value {
+    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
+    font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums;
+    flex-shrink: 0; text-align: right; color: var(--muted);
+  }
+  .person.me .person-value { color: var(--accent); }
+  .people.denso .person-value { font-size: 12.5px; }
+
+  .stale-note {
+    font-size: 11px; color: var(--dim); text-align: center;
+    padding: 8px 0 2px;
+  }
+
+  .people-filter { margin-bottom: 8px; }
+  .people-filter input { font-size: 14px; padding: 9px 12px; }
 
   .metric-tabs { display: flex; gap: 4px; background: var(--panel); border-radius: 10px; padding: 3px; }
   .metric-tab {
@@ -526,14 +732,11 @@
     .rank-head { align-items: stretch; }
     .rank-tools { width: 100%; }
     .metric-tabs { flex: 1; }
-    .stats-row { width: 100%; }
-    .stat-box { flex: 1; min-width: 0; }
-    .divider { display: none; }
-    .control-panel { padding: 12px 14px; gap: 12px; }
-    #timerButtons { flex: 1; }
-    #timerButtons .btn { flex: 1; }
-    .manual-block { width: 100%; }
-    .manual-block .btn { width: 100%; }
+    .view-tabs { flex: 1; }
+    .view-tab { flex: 1; justify-content: center; }
+    .stage { padding: 20px 14px 16px; gap: 15px; }
+    .fold-head { padding: 14px 16px; }
+    .fold-body { padding: 0 14px 14px; }
 
     /* Celdas mas grandes con el dedo. La rejilla ya vive dentro de un
        contenedor con scroll propio, asi que solo supone desplazarse algo mas. */
@@ -566,80 +769,51 @@
 <body>
 <div class="page">
  <div class="stack">
-  <main class="card">
-    <div class="header-row">
-      <div>
-        <div class="eyebrow">DEEP WORK</div>
-        <h1>Registro diario</h1>
-      </div>
-      <!-- Sin aria-live: durante una sesión estas cifras cambian cada minuto
-           y el lector de pantalla iba cantando números sueltos sin decir de
-           qué eran. Cada dato lleva ahora su propia etiqueta. -->
-      <div class="stats-row">
-        <div class="stat-box"><div class="stat-value" id="statToday" aria-label="Hoy: 0 minutos">0m</div><div class="stat-label" aria-hidden="true">Hoy</div></div>
-        <div class="stat-box"><div class="stat-value" id="statWeek" aria-label="Esta semana: 0 minutos">0m</div><div class="stat-label" aria-hidden="true">Esta semana</div></div>
-        <div class="stat-box"><div class="stat-value" id="statStreak" aria-label="Racha: 0 días">0 días</div><div class="stat-label" aria-hidden="true">Racha</div></div>
+
+  <header class="topbar">
+    <div class="brand">DEEP WORK</div>
+    <button class="group-chip" id="groupChip" aria-label="Grupo">Buscar grupo</button>
+  </header>
+
+  <div id="noticeSlot"></div>
+
+  <!-- ================= el temporizador, la pieza principal =================
+       El anillo mide el OBJETIVO DEL DÍA, no la sesión: una sesión es un
+       cronómetro abierto sin duración prevista, así que un anillo de sesión
+       no podría llenarse nunca y sería un adorno que miente. -->
+  <main class="card stage" id="stage">
+    <div class="dial-wrap" role="progressbar" id="dialWrap"
+         aria-label="Progreso del objetivo diario" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <svg class="dial" viewBox="0 0 200 200" aria-hidden="true" focusable="false">
+        <circle class="dial-track" cx="100" cy="100" r="88"></circle>
+        <circle class="dial-arc" id="dialArc" cx="100" cy="100" r="88"></circle>
+      </svg>
+      <div class="dial-face">
+        <div class="dial-state" id="dialState">LISTO</div>
+        <div class="dial-clock" id="timerClock">0m</div>
+        <div class="dial-goal" id="goalText">—</div>
       </div>
     </div>
 
-    <div id="noticeSlot"></div>
+    <div class="stage-actions" id="timerButtons"></div>
 
-    <div class="goal">
-      <div class="goal-bar" role="progressbar" aria-label="Progreso del objetivo diario" aria-valuemin="0" aria-valuemax="100" id="goalBar">
-        <div class="goal-fill" id="goalFill"></div>
-      </div>
-      <div class="goal-text" id="goalText">—</div>
+    <div class="mini-stats">
+      <div class="mini"><div class="mini-value" id="statToday" aria-label="Hoy: 0 minutos">0m</div><div class="mini-label" aria-hidden="true">Hoy</div></div>
+      <div class="mini"><div class="mini-value" id="statWeek" aria-label="Esta semana: 0 minutos">0m</div><div class="mini-label" aria-hidden="true">Semana</div></div>
+      <div class="mini"><div class="mini-value" id="statStreak" aria-label="Racha: 0 días">0 días</div><div class="mini-label" aria-hidden="true">Racha</div></div>
     </div>
 
-    <div class="control-panel">
-      <div class="timer-block">
-        <div class="pulse" aria-hidden="true"></div>
-        <div class="timer-clock" id="timerClock" aria-live="off">00:00:00</div>
-        <div id="timerButtons"></div>
-      </div>
-      <div class="divider" aria-hidden="true"></div>
-      <div class="manual-block">
-        <button class="btn btn-ghost" id="manualOpenBtn">+ Añadir tiempo</button>
-      </div>
-    </div>
-
-    <div class="grid-wrap" id="gridWrap">
-      <div class="grid-inner">
-        <div class="month-row" id="monthRow"></div>
-        <div id="gridRows"></div>
-      </div>
-    </div>
-
-    <div class="legend-row">
-      <div class="hover-info" id="hoverInfo">&nbsp;</div>
-      <div class="legend">
-        <span class="legend-label">Menos</span>
-        <div class="legend-swatch" style="background:var(--l0)"></div>
-        <div class="legend-swatch" style="background:var(--l1)"></div>
-        <div class="legend-swatch" style="background:var(--l2)"></div>
-        <div class="legend-swatch" style="background:var(--l3)"></div>
-        <div class="legend-swatch" style="background:var(--l4)"></div>
-        <span class="legend-label">Más</span>
-      </div>
-    </div>
-
-    <div class="summary">
-      <span>Total <b id="sumTotal">0h</b></span>
-      <span>Mejor día <b id="sumBest">0h</b></span>
-      <span>Media por día activo <b id="sumAvg">0m</b></span>
-      <span>Días registrados <b id="sumDays">0</b></span>
-      <span class="spacer"></span>
-      <button class="link-btn" id="goalBtn">Objetivo</button>
-      <button class="link-btn" id="exportBtn">Exportar</button>
-      <button class="link-btn" id="importBtn">Importar</button>
-      <input type="file" id="importFile" accept="application/json,.json" class="sr-only" />
-    </div>
+    <button class="link-btn stage-add" id="manualOpenBtn">+ Añadir tiempo a mano</button>
   </main>
 
+  <!-- ===================== gente y ranking =====================
+       Dos preguntas distintas con una sola petición: Gente contesta
+       "quién está ahora" y se ordena por presencia; Ranking contesta
+       "quién lleva más" y se ordena por minutos. -->
   <section class="card" id="rankCard">
     <div class="rank-head">
       <div>
-        <div class="eyebrow">RANKING</div>
+        <div class="eyebrow" id="rankEyebrow">GRUPO</div>
         <h2 id="rankTitle">Compite con tu gente</h2>
       </div>
       <div class="rank-tools" id="rankTools"></div>
@@ -647,8 +821,53 @@
     <div id="rankBody"></div>
     <div id="rankSync"></div>
   </section>
+
+  <!-- ===================== historial plegado ===================== -->
+  <details class="card fold" id="historyFold">
+    <summary class="fold-head">
+      <span class="fold-title">Historial</span>
+      <span class="fold-sub" id="foldSub"></span>
+    </summary>
+
+    <div class="fold-body">
+      <div class="grid-wrap" id="gridWrap">
+        <div class="grid-inner">
+          <div class="month-row" id="monthRow"></div>
+          <div id="gridRows"></div>
+        </div>
+      </div>
+
+      <div class="legend-row">
+        <div class="hover-info" id="hoverInfo">&nbsp;</div>
+        <div class="legend">
+          <span class="legend-label">Menos</span>
+          <div class="legend-swatch" style="background:var(--l0)"></div>
+          <div class="legend-swatch" style="background:var(--l1)"></div>
+          <div class="legend-swatch" style="background:var(--l2)"></div>
+          <div class="legend-swatch" style="background:var(--l3)"></div>
+          <div class="legend-swatch" style="background:var(--l4)"></div>
+          <span class="legend-label">Más</span>
+        </div>
+      </div>
+
+      <div class="summary">
+        <span>Total <b id="sumTotal">0h</b></span>
+        <span>Mejor día <b id="sumBest">0h</b></span>
+        <span>Media por día activo <b id="sumAvg">0m</b></span>
+        <span>Días registrados <b id="sumDays">0</b></span>
+        <span class="spacer"></span>
+        <button class="link-btn" id="goalBtn">Objetivo</button>
+        <button class="link-btn" id="exportBtn">Exportar</button>
+        <button class="link-btn" id="importBtn">Importar</button>
+        <input type="file" id="importFile" accept="application/json,.json" class="sr-only" />
+      </div>
+    </div>
+  </details>
+
  </div>
 </div>
+
+<div id="sheetSlot"></div>
 
 <div class="tip" id="tip" role="tooltip" aria-hidden="true"></div>
 <div class="toast-wrap" id="toastWrap" aria-live="polite"></div>
@@ -672,6 +891,7 @@ const K = {
   PREFS:   "deepwork:prefs:v2",
   GROUP:   "deepwork:group:v1",
   PENDING_LEAVE: "deepwork:leave-pendiente:v1",
+  ULTIMO_CICLO:  "deepwork:ultimo-ciclo",
   OLD_LOG: "deepwork-log",
   OLD_SES: "deepwork-active-session"
 };
@@ -987,6 +1207,8 @@ function startSession() {
   render();
   startTicking();
   toast("Sesión iniciada");
+  // El grupo se entera en el acto, no dentro de 45 segundos.
+  if (group && supaReady()) ciclo({});
 }
 
 /* Reparte el tiempo entre días si la sesión cruza la medianoche. */
@@ -1021,7 +1243,7 @@ function stopSession() {
     render();
     popToday();
     toast("Guardado: " + fmtMinutes(elapsed));
-    if (group && supaReady()) syncNow(false);   // el ranking se entera al momento
+    if (group && supaReady()) ciclo({ conDias: true });   // el grupo se entera al momento
   } else {
     render();
     toast("Sesión demasiado corta, no se ha guardado", true);
@@ -1037,6 +1259,7 @@ function discardSession() {
   releaseWakeLock();
   render();
   toast("Sesión descartada", true);
+  if (group && supaReady()) ciclo({});
 }
 
 function startTicking() {
@@ -1054,18 +1277,15 @@ function tick() {
   const nowKey = dateKey(new Date());
   if (nowKey !== lastTodayKey) { lastTodayKey = nowKey; render(); return; }
 
-  const clock = $("timerClock");
+  pintarReloj();
   if (session) {
-    const secs = Math.floor((Date.now() - session.startedAt) / 1000);
-    clock.textContent = fmtClock(secs);
-    clock.classList.add("active");
-    document.title = fmtClock(secs) + " · Deep Work";
+    document.title = fmtClock(Math.floor((Date.now() - session.startedAt) / 1000)) + " · Deep Work";
   }
   updateStats();
   updateTodayCell();
-
-  // durante la sesión, mi fila del ranking sube sola una vez por minuto
-  if (session && group && Math.floor((Date.now() - session.startedAt) / 1000) % 60 === 0) renderRanking();
+  // La fila propia la refresca refrescarPresencia(), que sólo reescribe
+  // textos: reconstruir la lista entera cada minuto se llevaba por delante
+  // el foco, el scroll interno y las animaciones a media asta.
 }
 
 /* --------------------- recuperación de sesión ----------------------- */
@@ -1106,6 +1326,10 @@ function renderNotice() {
     localStorage.removeItem(K.OLD_SES);
     if (session) writeJSON(K.SESSION, session);
     else localStorage.removeItem(K.SESSION);
+    // Mientras el aviso estaba en pantalla no se anunciaba nada al grupo
+    // (sesionSegundos devuelve null con pendingRecovery puesto). Ahora que
+    // hay decisión, que se entere en el momento.
+    if (group && supaReady()) ciclo({ conDias: true });
   };
 
   wireButton($("recKeep"), () => {
@@ -1365,7 +1589,6 @@ function render() {
 
 function renderTimer() {
   const buttons = $("timerButtons");
-  const clock = $("timerClock");
 
   if (session) {
     buttons.innerHTML =
@@ -1373,13 +1596,29 @@ function renderTimer() {
       '<button class="btn btn-ghost" id="discardBtn">Descartar</button>';
     wireButton($("stopBtn"), stopSession);
     wireButton($("discardBtn"), discardSession);
-    clock.classList.add("active");
-    clock.textContent = fmtClock((Date.now() - session.startedAt) / 1000);
+    $("dialState").textContent = "EN SESIÓN";
   } else {
     buttons.innerHTML = '<button class="btn btn-primary" id="startBtn">● Empezar sesión</button>';
     wireButton($("startBtn"), startSession);
-    clock.classList.remove("active");
-    clock.textContent = "00:00:00";
+    $("dialState").textContent = "LISTO";
+  }
+  pintarReloj();
+}
+
+/* Parado, la cifra grande es EL TOTAL DE HOY: un 00:00 muerto desperdicia
+   el elemento principal de la pantalla. Corriendo, el cronómetro. */
+function pintarReloj() {
+  const clock = $("timerClock");
+  if (session) {
+    const secs = Math.max(0, Math.floor((Date.now() - session.startedAt) / 1000));
+    const largo = secs >= 3600;
+    clock.textContent = largo
+      ? fmtClock(secs)
+      : pad(Math.floor(secs / 60)) + ":" + pad(secs % 60);
+    clock.classList.toggle("long", largo);
+  } else {
+    clock.textContent = fmtMinutes(minutesForDay(lastTodayKey));
+    clock.classList.remove("long");
   }
 }
 
@@ -1424,18 +1663,23 @@ function updateStats() {
   updateGoal(totalToday);
 }
 
+const DIAL_VUELTA = 2 * Math.PI * 88;   // el radio del <circle> del SVG
+
 function updateGoal(totalToday) {
   const mins = totalToday === undefined ? minutesForDay(lastTodayKey) : totalToday;
-  const pct = clamp((mins / prefs.goal) * 100, 0, 100);
-  const fill = $("goalFill");
+  const frac = clamp(mins / prefs.goal, 0, 1);
   const done = mins >= prefs.goal;
+  const arco = $("dialArc");
 
-  fill.style.width = pct + "%";
-  if (done !== fill.classList.contains("done")) fill.classList.toggle("done", done);
-  $("goalBar").setAttribute("aria-valuenow", Math.round(pct));
+  arco.style.strokeDashoffset = String(DIAL_VUELTA * (1 - frac));
+  arco.classList.toggle("done", done);
+  $("dialWrap").setAttribute("aria-valuenow", Math.round(frac * 100));
+
+  const falta = Math.max(0, prefs.goal - mins);
   $("goalText").textContent = done
     ? "Objetivo cumplido · " + fmtMinutes(mins)
-    : fmtMinutes(mins) + " de " + fmtMinutes(prefs.goal);
+    : (session ? fmtMinutes(mins) + " hoy · faltan " + fmtMinutes(falta)
+               : "Faltan " + fmtMinutes(falta) + " de " + fmtMinutes(prefs.goal));
 }
 
 function updateSummary() {
@@ -1446,6 +1690,11 @@ function updateSummary() {
   $("sumBest").textContent = fmtMinutes(best);
   $("sumAvg").textContent = values.length ? fmtMinutes(total / values.length) : "0m";
   $("sumDays").textContent = String(values.length);
+  // El resumen va en el título del pliegue para que se vea que el
+  // historial sigue ahí sin tener que abrirlo.
+  $("foldSub").textContent = values.length
+    ? values.length + " días · " + fmtMinutes(total)
+    : "todavía sin registros";
 }
 
 function renderGrid() {
@@ -1568,25 +1817,50 @@ function hideTip() {
 const SUPA = window.DEEPWORK_CONFIG || {};
 const supaReady = () => !!(SUPA.SUPABASE_URL && SUPA.SUPABASE_KEY);
 
-let group = readJSON(K.GROUP);          // { code, name, memberId, secret, nickname }
-let board = null;                       // respuesta de dw_leaderboard
+/* Parámetros de presencia. Los umbrales del servidor y los de aquí tienen
+   que moverse juntos: si el servidor descartara la sesión antes que el
+   cliente, desaparecerías del grupo justo mientras la app te pregunta qué
+   hacer con ella. Por eso FANTASMA_H (6) va una hora por encima de
+   LONG_SESSION_H (5), que es cuando se pregunta. */
+const P = {
+  EN_LINEA_S:   150,        // sin latido más reciente, ya no está delante
+  DORMIDO_S:    720,        // sesión abierta pero pantalla apagada
+  FANTASMA_H:   6,          // igual que el interval '6 hours' de dw_board
+  RANCIO_S:     120,        // pasado esto no se afirma nada sobre el presente
+  CAD_SESION:      45000,   // sesión + pestaña visible
+  CAD_SESION_OCULTA: 180000,
+  CAD_MIRANDO:     45000,   // sin sesión, con la tabla a la vista
+  CAD_LEJOS:      150000,   // sin sesión, la tabla fuera de pantalla
+  VIGILANTE:       20000,   // sólo comprueba el reloj, no marca ritmo
+  REPINTADO:       15000    // refresco local de las etiquetas de tiempo
+};
+
+let group = readJSON(K.GROUP);
+let board = null;                       // última respuesta con members
+let boardAt = 0;                        // cuándo llegó, para no mentir sobre el presente
 let boardError = null;
-let boardLoading = false;
+let vista = (prefs.vista === "ranking") ? "ranking" : "gente";
 let metric = (prefs.metric === "today" || prefs.metric === "total") ? prefs.metric : "week";
 let syncState = { state: "idle", at: 0, error: null };
-let boardFresh = false;                 // la entrada escalonada sólo al traer datos nuevos
+let boardFresh = false;
+let enVuelo = null;                     // promesa del ciclo en curso
+let otroCiclo = false;                  // había otro esperando
+let diasSucios = false;
+let edicionSeq = 0;                     // detecta ediciones hechas en pleno vuelo
 let pushTimer = null;
-let pushing = null;      // promesa del envio en curso, o null
-let pushAgain = false;
+let latidoTimer = null;
+let vigilante = null;
+let repintador = null;
+let ultimoIntento = 0;
+let fallosSeguidos = 0;
+let filtroGente = "";
 
 const RPC_TIMEOUT = 12000;
 
-async function rpc(fn, args) {
+async function rpc(fn, args, opciones) {
   const base = String(SUPA.SUPABASE_URL).replace(/\/+$/, "");
   // Con una red que acepta la conexión y luego no contesta (típico de un
-  // wifi de bar), fetch se queda esperando indefinidamente: el ranking se
-  // quedaba en "Sincronizando…" para siempre y, como pushing seguía en
-  // true, ningún envío posterior salía ya nunca.
+  // wifi de bar), fetch se queda esperando indefinidamente.
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
   const corte = ctrl ? setTimeout(() => ctrl.abort(), RPC_TIMEOUT) : null;
 
@@ -1600,7 +1874,8 @@ async function rpc(fn, args) {
         Authorization: "Bearer " + SUPA.SUPABASE_KEY
       },
       body: JSON.stringify(args),
-      signal: ctrl ? ctrl.signal : undefined
+      signal: ctrl ? ctrl.signal : undefined,
+      keepalive: !!(opciones && opciones.keepalive)
     });
   } catch (e) {
     throw new Error(e && e.name === "AbortError" ? "La conexión ha tardado demasiado" : "Sin conexión");
@@ -1622,91 +1897,175 @@ function saveGroup() {
   else localStorage.removeItem(K.GROUP);
 }
 
-/* --------------------------- enviar minutos ------------------------- */
-
-/* Van también los días a cero. dw_push sólo hace upsert, así que si se
-   omitían, vaciar un día no lo borraba del ranking: el servidor se quedaba
-   con la cifra vieja para siempre y seguías apareciendo con horas que ya
-   habías quitado. */
+/* Van también los días a cero: dw_sync hace upsert, así que si se
+   omitieran, vaciar un día no lo borraría del ranking. */
 function daysPayload() {
   const out = {};
-  for (const key in doc.days) {
-    out[key] = Math.round(doc.days[key].m * 10) / 10;
-  }
+  for (const key in doc.days) out[key] = Math.round(doc.days[key].m * 10) / 10;
   return out;
+}
+
+/* Segundos que lleva abierta la sesión, o null si no hay ninguna.
+   OJO: no se lee K.SESSION del disco. Con el aviso de recuperación en
+   pantalla, `session` vale null pero la clave SIGUE guardada a propósito;
+   leerla a pelo te anunciaría "en sesión desde hace 8 horas" a todo el
+   grupo mientras miras el aviso sin decidirte. */
+function sesionSegundos() {
+  if (pendingRecovery || !session) return null;
+  const secs = Math.floor((Date.now() - session.startedAt) / 1000);
+  if (secs < 0 || secs > P.FANTASMA_H * 3600) return null;
+  return secs;
+}
+
+function marcarSucio() {
+  diasSucios = true;
+  edicionSeq++;
 }
 
 function schedulePush() {
   if (!group || !supaReady()) return;
+  marcarSucio();
   clearTimeout(pushTimer);
-  // Agrupa ráfagas de ediciones, y al terminar recarga el ranking: si no,
-  // tras editar un día tu propia fila seguía mostrando la cifra anterior
-  // hasta que pulsabas Actualizar a mano.
-  pushTimer = setTimeout(() => {
-    pushNow().then(() => { if (syncState.state === "ok") fetchBoard(true); });
-  }, 2500);
+  pushTimer = setTimeout(() => ciclo({ forzar: true }), 2500);   // agrupa ráfagas
 }
 
-/* Devuelve siempre la promesa del envío en curso. Antes, si ya había uno en
-   vuelo, esto salía de vuelta al instante: "Actualizar" pedía el ranking sin
-   esperar a que el envío llegase, pintaba datos anteriores a tus propios
-   cambios y aun así anunciaba "Ranking actualizado". */
-function pushNow() {
-  if (!group || !supaReady()) return Promise.resolve();
-  if (pushing) { pushAgain = true; return pushing; }
-  clearTimeout(pushTimer);
-  syncState = { state: "sending", at: syncState.at, error: null };
-  renderSync();
+function cadencia() {
+  if (document.visibilityState !== "visible") {
+    return session ? P.CAD_SESION_OCULTA : null;   // sin sesión y oculta: no se late
+  }
+  if (session) return P.CAD_SESION;
+  return tablaALaVista() ? P.CAD_MIRANDO : P.CAD_LEJOS;
+}
 
-  const quien = group.memberId;
-  pushing = (async () => {
+function tablaALaVista() {
+  const el = $("rankCard");
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return r.bottom > 0 && r.top < innerHeight;
+}
+
+/* Un ciclo = una petición: minutos, latido y tabla a la vez. Al ser la
+   misma petición, la carrera entre enviar y leer (que ya costó un parche
+   en la versión anterior) deja de poder existir. */
+function ciclo(opciones) {
+  const op = opciones || {};
+  if (!group || !supaReady()) return Promise.resolve();
+  if (enVuelo) { otroCiclo = true; return enVuelo; }
+
+  ultimoIntento = Date.now();
+  const mandaDias = diasSucios || !!op.conDias;
+  const seq = edicionSeq;                 // se captura ANTES de salir
+  const quien = { id: group.memberId, secret: group.secret };
+
+  /* Repliegue a las funciones antiguas mientras el SQL nuevo no esté
+     puesto. Sin esto, publicar este cliente antes de migrar la base
+     dejaría el ranking roto para todo el que ya tenga la app instalada.
+     Se pierde la presencia, que es lo que no existe todavía; el ranking y
+     el envío de minutos siguen funcionando igual. */
+  const viejo = async () => {
+    await rpc("dw_push", {
+      p_member: quien.id, p_secret: quien.secret,
+      p_days: mandaDias ? daysPayload() : {}, p_nickname: null
+    });
+    const r = await rpc("dw_leaderboard", { p_code: group.code, p_today: dateKey(new Date()) });
+    return r ? { name: r.name, code: r.code, members: r.members } : null;
+  };
+  const faltaSync = (msg) => /dw_sync|404|Could not find|schema cache|not exist/i.test(String(msg));
+
+  if (op.ruidoso) { syncState = { state: "sending", at: syncState.at, error: null }; renderSync(); }
+
+  enVuelo = (async () => {
     try {
-      await rpc("dw_push", {
-        p_member: quien,
-        p_secret: group.secret,
-        p_days: daysPayload(),
-        p_nickname: null
-      });
-      syncState = { state: "ok", at: Date.now(), error: null };
+      let datos;
+      try {
+        datos = await rpc("dw_sync", {
+          p_member: quien.id,
+          p_secret: quien.secret,
+          p_days: mandaDias ? daysPayload() : null,
+          p_session_secs: sesionSegundos(),
+          p_board: true,
+          p_today: dateKey(new Date())
+        });
+      } catch (e) {
+        if (!faltaSync(e.message)) throw e;
+        datos = await viejo();
+      }
+
+      // Sólo se limpia si no ha habido ediciones mientras la petición
+      // volaba. Limpiarlo a secas perdería esa edición para siempre, en
+      // silencio, con la app diciendo "Al día".
+      if (mandaDias && seq === edicionSeq) diasSucios = false;
+
+      // El grupo puede haber cambiado durante la espera.
+      if (group && group.memberId === quien.id) {
+        if (datos && datos.members) { board = datos.members; boardAt = Date.now(); boardFresh = true; }
+        if (datos) {
+          let cambio = false;
+          if (datos.name && datos.name !== group.name) { group.name = datos.name; cambio = true; }
+          if (datos.code && datos.code !== group.code) { group.code = datos.code; cambio = true; }
+          if (datos.group_id && datos.group_id !== group.groupId) { group.groupId = datos.group_id; cambio = true; }
+          if (typeof datos.is_public === "boolean" && datos.is_public !== group.isPublic) { group.isPublic = datos.is_public; cambio = true; }
+          if (typeof datos.is_owner === "boolean" && datos.is_owner !== group.isOwner) { group.isOwner = datos.is_owner; cambio = true; }
+          if (typeof datos.show_presence === "boolean" && datos.show_presence !== group.showPresence) { group.showPresence = datos.show_presence; cambio = true; }
+          if (cambio) saveGroup();
+        }
+        boardError = null;
+        syncState = { state: "ok", at: Date.now(), error: null };
+        fallosSeguidos = 0;
+        try { localStorage.setItem(K.ULTIMO_CICLO, String(Date.now())); } catch (e) { /* modo privado */ }
+        renderRanking();
+      }
     } catch (e) {
+      boardError = e.message;
+      fallosSeguidos++;
       syncState = { state: "error", at: syncState.at, error: e.message };
+      renderSync();
     }
-    pushing = null;
-    renderSync();
-    if (pushAgain) { pushAgain = false; schedulePush(); }
+    enVuelo = null;
+    programarLatido();
+    if (otroCiclo) { otroCiclo = false; setTimeout(() => ciclo({}), 300); }
   })();
 
-  return pushing;
+  return enVuelo;
 }
 
-async function fetchBoard(silent) {
-  if (!group || !supaReady()) return;
-  const codigo = group.code;              // el grupo puede cambiar durante la espera
-  boardLoading = true;
-  boardError = null;
-  if (!silent) renderRanking();
-  let datos = null, fallo = null;
-  try {
-    datos = await rpc("dw_leaderboard", { p_code: codigo, p_today: dateKey(new Date()) });
-  } catch (e) {
-    fallo = e.message;
-  }
-  boardLoading = false;
-  // Si mientras tanto has salido del grupo o te has cambiado a otro, esta
-  // respuesta ya no vale: antes resucitaba el ranking del grupo abandonado.
-  if (!group || group.code !== codigo) { renderRanking(); return; }
-
-  if (datos) {
-    board = datos;
-    boardFresh = true;
-    if (datos.name && datos.name !== group.name) { group.name = datos.name; saveGroup(); }
-  } else {
-    boardError = fallo;
-  }
-  renderRanking();
+/* Nada de setInterval marcando el ritmo: Chrome estrangula los timers de
+   las pestañas ocultas y congela la pestaña a los cinco minutos, y iOS
+   suspende el proceso al bloquear la pantalla. Un latido que cuenta
+   "han pasado 45 s de temporizador" se descuadra y no se recupera; uno
+   que mira el reloj se pone al día en el primer tick que le concedan. */
+function programarLatido() {
+  clearTimeout(latidoTimer);
+  const espera = cadencia();
+  if (espera == null) return;
+  const castigo = Math.min(fallosSeguidos, 4);
+  const conFallo = castigo ? Math.min(espera * Math.pow(2, castigo), 240000) : espera;
+  const jitter = 0.85 + Math.random() * 0.3;
+  latidoTimer = setTimeout(() => ciclo({}), conFallo * jitter);
 }
 
-/* Reintenta las bajas de grupo que se quedaron sin enviar. */
+function arrancarVigilante() {
+  clearInterval(vigilante);
+  vigilante = setInterval(() => {
+    if (!group || !supaReady()) return;
+    const espera = cadencia();
+    if (espera == null) return;
+    if (Date.now() - ultimoIntento < espera) return;
+    // Otra pestaña acaba de sincronizar: nos saltamos el turno. Falla
+    // abierto a propósito: como mucho se duplica una petición, y dw_sync
+    // es idempotente. Un turno con vencimiento fallaría cerrado, dejando
+    // una pestaña sin sincronizar para siempre y sin ningún síntoma.
+    const ultimo = Number(localStorage.getItem(K.ULTIMO_CICLO) || 0);
+    if (Date.now() - ultimo < espera * 0.7) return;
+    ciclo({});
+  }, P.VIGILANTE);
+}
+
+function arrancarRepintador() {
+  clearInterval(repintador);
+  repintador = setInterval(refrescarPresencia, P.REPINTADO);
+}
+
 async function flushPendingLeaves() {
   if (!supaReady()) return;
   const cola = readJSON(K.PENDING_LEAVE);
@@ -1722,10 +2081,77 @@ async function flushPendingLeaves() {
 
 async function syncNow(announce) {
   flushPendingLeaves();
-  await pushNow();
-  await fetchBoard(true);
+  await ciclo({ forzar: true, conDias: true, ruidoso: announce });
   if (announce) toast(boardError ? "No se ha podido actualizar" : "Ranking actualizado", !!boardError);
 }
+
+
+/* --------------------------- estado de cada persona ------------------ */
+
+/* Los segundos llegan del servidor como TRANSCURRIDOS, nunca como fechas:
+   así el reloj del móvil deja de intervenir. Aquí se anclan al reloj
+   propio para que sigan corriendo entre respuesta y respuesta. */
+function edadDe(secs) {
+  if (secs == null) return null;
+  return secs + Math.floor((Date.now() - boardAt) / 1000);
+}
+
+function rancio() {
+  return !boardAt || Date.now() - boardAt > P.RANCIO_S * 1000;
+}
+
+function estadoDe(p) {
+  if (!p.show_presence) return "oculto";
+  const visto = edadDe(p.seen_secs);
+  const sesion = edadDe(p.session_secs);
+  // Con datos viejos no se afirma nada sobre el presente: el ranking se
+  // sigue viendo, porque esas cifras no caducan, pero ni un punto verde.
+  if (rancio()) return "fuera";
+  if (sesion != null && sesion < P.FANTASMA_H * 3600) {
+    if (visto != null && visto <= P.EN_LINEA_S) return "sesion";
+    if (visto != null && visto <= P.DORMIDO_S) return "dormido";
+    return "fuera";
+  }
+  if (visto != null && visto <= P.EN_LINEA_S) return "linea";
+  return "fuera";
+}
+
+function textoHace(secs) {
+  if (secs == null) return "sin datos";
+  if (secs < 60) return "hace un momento";
+  const min = Math.floor(secs / 60);
+  if (min < 60) return "hace " + min + " min";
+  const h = Math.floor(min / 60);
+  if (h < 6) return "hace " + h + " h";
+  // Pasadas seis horas manda el día natural, que dice más que "hace 19 h".
+  const cuando = new Date(Date.now() - secs * 1000);
+  const hoy = startOfDay(new Date());
+  const dia = startOfDay(cuando);
+  const hora = cuando.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  const dias = Math.round((hoy - dia) / 86400000);
+  if (dias === 0) return "hoy a las " + hora;
+  if (dias === 1) return "ayer a las " + hora;
+  if (dias < 7) return "hace " + dias + " días";
+  return cuando.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+}
+
+function textoPresencia(p) {
+  const estado = estadoDe(p);
+  const sesion = edadDe(p.session_secs);
+  if (estado === "oculto") return "no comparte su conexión";
+  if (estado === "sesion") return "En sesión · " + fmtMinutes(sesion / 60);
+  if (estado === "dormido") {
+    // Entre 150 s y 12 min sin latido el contador se congela: decir la hora
+    // de inicio es cierto tanto si sigue trabajando como si no.
+    const desde = new Date(Date.now() - sesion * 1000);
+    return "En sesión desde las " + desde.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  }
+  if (estado === "linea") return "En línea";
+  return textoHace(edadDe(p.seen_secs));
+}
+
+const ORDEN_PRESENCIA = { sesion: 0, dormido: 1, linea: 2, fuera: 3, oculto: 4 };
+
 
 /* ------------------------------ pintado ----------------------------- */
 
@@ -1735,47 +2161,98 @@ const METRICS = [
   { id: "total", label: "Total" }
 ];
 
+/* Un tono estable por apodo para el monograma: el mismo nombre siempre
+   sale del mismo color, así se reconoce a la gente de un vistazo. */
+function tonoDe(nombre) {
+  let h = 0;
+  for (let i = 0; i < nombre.length; i++) h = (h * 31 + nombre.charCodeAt(i)) % 360;
+  return "hsl(" + h + " 42% 42%)";
+}
+function inicialDe(nombre) {
+  const limpio = String(nombre).trim();
+  return (limpio ? limpio[0] : "?").toUpperCase();
+}
+
+/* Fila de datos común a las dos pestañas: mis propias cifras llevan
+   sumada la sesión en marcha, que el servidor todavía no conoce. */
+function filasDelGrupo() {
+  const live = liveMinutes();
+  return (board || []).map((m) => {
+    const mine = group && m.member_id === group.memberId;
+    return {
+      raw: m,
+      mine: !!mine,
+      nickname: m.nickname,
+      today: (m.today || 0) + (mine ? live : 0),
+      week:  (m.week  || 0) + (mine ? live : 0),
+      total: (m.total || 0) + (mine ? live : 0),
+      streak: m.streak || 0,
+      lastDay: m.last_day || null,
+      estado: mine && session ? "sesion" : estadoDe(m)
+    };
+  });
+}
+
 function renderRanking() {
   const tools = $("rankTools");
   const body = $("rankBody");
   const title = $("rankTitle");
+  const eyebrow = $("rankEyebrow");
+
+  renderGroupChip();
 
   if (!supaReady()) {
-    title.textContent = "Ranking sin configurar";
+    eyebrow.textContent = "GRUPO";
+    title.textContent = "Sin configurar";
     tools.innerHTML = "";
     body.innerHTML =
       '<div class="rank-empty">Falta conectar la base de datos.<br>' +
-      "Rellena <b>config.js</b> con los datos de tu proyecto de Supabase y el ranking se activa solo.</div>";
+      "Rellena <b>config.js</b> con los datos de tu proyecto de Supabase.</div>";
     renderSync();
     return;
   }
 
+  // Sin grupo, el contenido ES el directorio de grupos públicos. Antes
+  // esto era un muro de "crea un grupo": si no tenías código y no querías
+  // crear nada, la app se acababa ahí.
   if (!group) {
-    title.textContent = "Compite con tu gente";
+    eyebrow.textContent = "GRUPOS ABIERTOS";
+    title.textContent = "Entra en un grupo";
     tools.innerHTML = "";
-    body.innerHTML =
-      '<div class="rank-empty">Crea un grupo y pasa el código a quien quieras.<br>' +
-      "Veréis las horas de trabajo profundo de cada uno." +
-      '<div class="rank-cta">' +
-        '<button class="btn btn-primary" id="createGroupBtn">Crear un grupo</button>' +
-        '<button class="btn btn-ghost" id="joinGroupBtn">Tengo un código</button>' +
-      "</div></div>";
-    wireButton($("createGroupBtn"), openCreateGroup);
-    wireButton($("joinGroupBtn"), openJoinGroup);
+    body.innerHTML = '<div id="publicInline"></div>';
+    renderDirectorio($("publicInline"), true);
     renderSync();
     return;
   }
 
+  eyebrow.textContent = group.isPublic ? "GRUPO ABIERTO" : "GRUPO PRIVADO";
   title.textContent = group.name;
-  tools.innerHTML =
-    '<button class="code-chip" id="codeChip" title="Copiar el código">' +
-      group.code + '<span class="hint">copiar</span>' +
-    "</button>" +
-    '<div class="metric-tabs">' +
-      METRICS.map((m) => '<button class="metric-tab' + (m.id === metric ? " on" : "") + '" data-metric="' + m.id + '">' + m.label + "</button>").join("") +
-    "</div>";
 
-  $("codeChip").onclick = copyCode;
+  const filas = filasDelGrupo();
+  const enSesion = filas.filter((f) => f.estado === "sesion" || f.estado === "dormido").length;
+
+  tools.innerHTML =
+    '<div class="view-tabs" role="tablist">' +
+      '<button class="view-tab' + (vista === "gente" ? " on" : "") + '" data-vista="gente" role="tab">' +
+        "Gente" + (enSesion ? '<span class="badge">' + enSesion + "</span>" : "") +
+      "</button>" +
+      '<button class="view-tab' + (vista === "ranking" ? " on" : "") + '" data-vista="ranking" role="tab">Ranking</button>' +
+    "</div>" +
+    (vista === "ranking"
+      ? '<div class="metric-tabs">' + METRICS.map((m) =>
+          '<button class="metric-tab' + (m.id === metric ? " on" : "") + '" data-metric="' + m.id + '">' + m.label + "</button>"
+        ).join("") + "</div>"
+      : "");
+
+  tools.querySelectorAll(".view-tab").forEach((tab) => {
+    tab.onclick = () => {
+      vista = tab.dataset.vista;
+      prefs.vista = vista;
+      savePrefs();
+      haptic(8);
+      renderRanking();
+    };
+  });
   tools.querySelectorAll(".metric-tab").forEach((tab) => {
     tab.onclick = () => {
       metric = tab.dataset.metric;
@@ -1786,59 +2263,90 @@ function renderRanking() {
     };
   });
 
-  if (boardLoading && !board) {
-    body.innerHTML = '<div class="rank-list">' + '<div class="skeleton"></div>'.repeat(3) + "</div>";
+  if (!filas.length) {
+    body.innerHTML = boardError
+      ? '<div class="rank-empty">No se ha podido cargar.<br>' + escapeHtml(boardError) +
+        '<div class="rank-cta"><button class="btn btn-ghost" id="retryBoard">Reintentar</button></div></div>'
+      : '<div class="rank-list">' + '<div class="skeleton"></div>'.repeat(3) + "</div>";
+    if (boardError) wireButton($("retryBoard"), () => syncNow(false));
     renderSync();
     return;
   }
 
-  if (boardError && !board) {
-    body.innerHTML = '<div class="rank-empty">No se ha podido cargar el ranking.<br>' + boardError +
-      '<div class="rank-cta"><button class="btn btn-ghost" id="retryBoard">Reintentar</button></div></div>';
-    wireButton($("retryBoard"), () => fetchBoard(false));
-    renderSync();
-    return;
-  }
+  if (vista === "gente") renderGente(body, filas);
+  else renderTablaRanking(body, filas);
 
-  const members = (board && board.members) || [];
-  const live = liveMinutes();
+  boardFresh = false;
+  renderSync();
+}
 
-  // A mis propias cifras les sumo la sesión en marcha, que el servidor
-  // todavía no conoce: así mi fila no se queda atrás mientras trabajo.
-  const rows = members.map((m) => {
-    const mine = m.member_id === group.memberId;
-    return {
-      mine: mine,
-      nickname: m.nickname,
-      today: (m.today || 0) + (mine ? live : 0),
-      week: (m.week || 0) + (mine ? live : 0),
-      total: (m.total || 0) + (mine ? live : 0),
-      streak: m.streak || 0,
-      lastDay: m.last_day || null
-    };
+/* ---- pestaña Gente: quién está ahora ---- */
+function renderGente(body, filas) {
+  // Ordena por presencia, no por minutos: quien empieza a trabajar sube,
+  // que es justo el momento que se quiere ver. Desempate estable por
+  // apodo para que las filas no bailen entre refrescos.
+  const orden = filas.slice().sort((a, b) => {
+    const d = ORDEN_PRESENCIA[a.estado] - ORDEN_PRESENCIA[b.estado];
+    if (d) return d;
+    if (a.estado === "sesion" || a.estado === "dormido") {
+      return (edadDe(b.raw.session_secs) || 0) - (edadDe(a.raw.session_secs) || 0);
+    }
+    if (a.estado === "fuera") return (edadDe(a.raw.seen_secs) || 1e9) - (edadDe(b.raw.seen_secs) || 1e9);
+    return a.nickname.localeCompare(b.nickname, "es");
   });
 
-  rows.sort((a, b) => b[metric] - a[metric] || a.nickname.localeCompare(b.nickname, "es"));
-  const top = rows.length ? Math.max(rows[0][metric], 1) : 1;
+  const filtro = filtroGente.trim().toLowerCase();
+  const visibles = filtro ? orden.filter((f) => f.nickname.toLowerCase().includes(filtro)) : orden;
+
+  // Tres regímenes de densidad: tres amigos con filas apretadas parecen un
+  // grupo muerto, y cuarenta con filas holgadas son metros de scroll.
+  const densidad = orden.length <= 6 ? "holgado" : (orden.length <= 20 ? "" : "denso");
+
+  const buscador = orden.length >= 15
+    ? '<div class="people-filter"><input type="search" id="peopleFilter" placeholder="Buscar en el grupo" value="' + escapeHtml(filtroGente) + '" /></div>'
+    : "";
+
+  const html = visibles.map((f) => {
+    const nombre = escapeHtml(f.nickname);
+    const viva = f.estado === "sesion" || f.estado === "dormido";
+    return '<div class="person' + (f.mine ? " me" : "") + '">' +
+      '<span class="dot-state ' + f.estado + '" aria-hidden="true"></span>' +
+      '<span class="mono" aria-hidden="true" style="background:' + tonoDe(f.nickname) + '">' + escapeHtml(inicialDe(f.nickname)) + "</span>" +
+      '<div class="person-who">' +
+        '<div class="person-name">' + nombre + (f.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
+        '<div class="person-sub' + (viva ? " viva" : "") + '" data-presencia="' + escapeHtml(f.raw.member_id) + '">' +
+          escapeHtml(textoPresencia(f.raw)) +
+        "</div>" +
+      "</div>" +
+      '<div class="person-value">' + fmtMinutes(f.today) + "</div>" +
+    "</div>";
+  }).join("");
+
+  body.innerHTML = buscador +
+    '<div class="people ' + densidad + '">' + html + "</div>" +
+    (rancio() && boardAt ? '<div class="stale-note">Datos de ' + textoHace(Math.floor((Date.now() - boardAt) / 1000)) + "</div>" : "") +
+    (visibles.length ? "" : '<div class="rank-empty">Nadie con ese nombre.</div>');
+
+  const campo = $("peopleFilter");
+  if (campo) {
+    campo.oninput = () => { filtroGente = campo.value; renderRanking(); $("peopleFilter").focus(); };
+  }
+}
+
+/* ---- pestaña Ranking: quién lleva más ---- */
+function renderTablaRanking(body, filas) {
+  const orden = filas.slice().sort((a, b) => b[metric] - a[metric] || a.nickname.localeCompare(b.nickname, "es"));
+  const top = orden.length ? Math.max(orden[0][metric], 1) : 1;
   const medals = ["🥇", "🥈", "🥉"];
 
-  if (!rows.length) {
-    body.innerHTML = '<div class="rank-empty">Todavía no hay nadie más.<br>Pasa el código <b>' + group.code + "</b> a quien quieras.</div>";
-    renderSync();
-    return;
-  }
-
-  body.innerHTML = '<div class="rank-list">' + rows.map((r, i) => {
+  body.innerHTML = '<div class="rank-list">' + orden.map((r, i) => {
     const value = r[metric];
     const width = clamp((value / top) * 100, 0, 100);
-    // El puesto se escribe siempre en número; la medalla es adorno. Antes el
-    // emoji sustituía a la cifra, y quien no lo vea (lector de pantalla, o
-    // una fuente sin ese emoji) se quedaba sin saber la posición.
     const conMedalla = i < 3 && value > 0;
     const puesto = '<span aria-hidden="true">' + (conMedalla ? medals[i] : "") + "</span>" +
                    '<span class="pos-num">' + (i + 1) + "</span>";
     const sub = [];
-    if (r.streak > 0) sub.push('<span aria-hidden="true">🔥</span> ' + r.streak + " día" + (r.streak === 1 ? "" : "s") + " seguido" + (r.streak === 1 ? "" : "s"));
+    if (r.streak > 0) sub.push('<span aria-hidden="true">🔥</span> ' + r.streak + " día" + (r.streak === 1 ? "" : "s"));
     if (metric !== "total") sub.push("total " + fmtMinutes(r.total));
     if (!r.lastDay && !value) sub.push("sin registrar nada aún");
 
@@ -1853,9 +2361,42 @@ function renderRanking() {
       '<div class="rank-value">' + fmtMinutes(value) + "</div>" +
     "</div>";
   }).join("") + "</div>";
+}
 
-  boardFresh = false;
-  renderSync();
+/* Refresco local de las etiquetas de tiempo, sin tocar la red y sin
+   reconstruir la lista: reconstruir el innerHTML cada 15 s se llevaría por
+   delante el foco del teclado, el scroll interno y las animaciones. */
+function refrescarPresencia() {
+  if (!group || !board || vista !== "gente") return;
+  document.querySelectorAll("[data-presencia]").forEach((el) => {
+    const m = (board || []).find((x) => x.member_id === el.dataset.presencia);
+    if (!m) return;
+    const mio = group && m.member_id === group.memberId;
+    const estado = mio && session ? "sesion" : estadoDe(m);
+    const texto = mio && session ? "En sesión · " + fmtMinutes(liveMinutes()) : textoPresencia(m);
+    if (el.textContent !== texto) el.textContent = texto;
+    el.classList.toggle("viva", estado === "sesion" || estado === "dormido");
+    const punto = el.closest(".person") && el.closest(".person").querySelector(".dot-state");
+    if (punto && !punto.classList.contains(estado)) punto.className = "dot-state " + estado;
+  });
+}
+
+function renderGroupChip() {
+  const chip = $("groupChip");
+  if (!supaReady()) { chip.style.display = "none"; return; }
+  chip.style.display = "";
+  if (!group) {
+    chip.innerHTML = '<span class="chip-name">Buscar grupo</span>';
+    return;
+  }
+  const vivos = (board || []).filter((m) => {
+    const e = estadoDe(m);
+    return e === "sesion" || e === "dormido";
+  }).length;
+  chip.innerHTML =
+    '<span class="chip-name">' + escapeHtml(group.name) + "</span>" +
+    (group.isPublic ? '<span class="chip-tag">ABIERTO</span>' : "") +
+    (vivos ? '<span class="chip-live"><span class="dot-state sesion"></span>' + vivos + "</span>" : "");
 }
 
 function renderSync() {
@@ -1864,7 +2405,7 @@ function renderSync() {
 
   let dotClass = "sync-dot";
   let text;
-  if (syncState.state === "sending" || boardLoading) { dotClass += " wait"; text = "Sincronizando…"; }
+  if (enVuelo) { dotClass += " wait"; text = "Sincronizando…"; }
   else if (syncState.state === "error") { dotClass += " bad"; text = "Sin conexión · se enviará al volver"; }
   else if (syncState.at) { text = "Al día · " + new Date(syncState.at).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }); }
   else { dotClass += " wait"; text = "Pendiente de enviar"; }
@@ -1874,13 +2415,241 @@ function renderSync() {
       '<span class="' + dotClass + '"></span><span>' + text + "</span>" +
       '<span class="spacer"></span>' +
       '<button class="link-btn" id="refreshBtn">Actualizar</button>' +
-      '<button class="link-btn" id="renameBtn">Cambiar apodo</button>' +
-      '<button class="link-btn" id="leaveBtn">Salir del grupo</button>' +
+      '<button class="link-btn" id="groupSettingsBtn">Ajustes</button>' +
     "</div>";
 
   wireButton($("refreshBtn"), () => syncNow(true));
-  wireButton($("renameBtn"), openRename);
-  wireButton($("leaveBtn"), openLeave);
+  wireButton($("groupSettingsBtn"), openGroupSettings);
+}
+
+
+/* ===================== hoja de grupos ===================== */
+
+let closeSheet = null;
+
+function openSheet(titulo, cuerpoHtml, pieHtml, setup) {
+  if (closeSheet) closeSheet();
+  const slot = $("sheetSlot");
+  const antes = document.activeElement;
+
+  const back = document.createElement("div");
+  back.className = "sheet-back";
+  back.innerHTML =
+    '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + escapeHtml(titulo) + '">' +
+      '<div class="sheet-head"><h2>' + escapeHtml(titulo) + "</h2>" +
+        '<button class="link-btn" id="sheetClose" aria-label="Cerrar">Cerrar</button></div>' +
+      '<div class="sheet-body" id="sheetBody">' + cuerpoHtml + "</div>" +
+      (pieHtml ? '<div class="sheet-foot">' + pieHtml + "</div>" : "") +
+    "</div>";
+  slot.appendChild(back);
+
+  const close = () => {
+    back.classList.add("closing");
+    setTimeout(() => back.remove(), 220);
+    document.removeEventListener("keydown", onKey, true);
+    closeSheet = null;
+    if (antes && antes.focus) { try { antes.focus(); } catch (e) { /* ya no existe */ } }
+  };
+  const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
+
+  back.addEventListener("mousedown", (e) => { if (e.target === back) close(); });
+  document.addEventListener("keydown", onKey, true);
+  wireButton($("sheetClose"), close);
+  closeSheet = close;
+  if (setup) setup(close, $("sheetBody"));
+}
+
+function openGrupos() {
+  openSheet(
+    "Grupos",
+    '<div class="people-filter"><input type="search" id="gQuery" placeholder="Buscar un grupo abierto" /></div>' +
+    '<div id="directorio"></div>',
+    '<button class="btn btn-ghost" id="sheetCode">Tengo un código</button>' +
+    '<button class="btn btn-primary" id="sheetCreate">Crear un grupo</button>',
+    (close) => {
+      renderDirectorio($("directorio"), false, close);
+      const campo = $("gQuery");
+      let t = null;
+      campo.oninput = () => {
+        clearTimeout(t);
+        t = setTimeout(() => renderDirectorio($("directorio"), false, close, campo.value), 300);
+      };
+      wireButton($("sheetCode"), () => { close(); openJoinGroup(); });
+      wireButton($("sheetCreate"), () => { close(); openCreateGroup(); });
+    }
+  );
+}
+
+async function renderDirectorio(destino, enLinea, close, consulta) {
+  if (!destino) return;
+  destino.innerHTML = '<div class="glist">' + '<div class="skeleton"></div>'.repeat(3) + "</div>";
+
+  let lista = [];
+  try {
+    lista = await rpc("dw_public_groups", { p_query: consulta || null, p_limit: 40 }) || [];
+  } catch (e) {
+    destino.innerHTML = '<div class="sheet-empty">No se ha podido cargar la lista.<br>' + escapeHtml(e.message) + "</div>";
+    return;
+  }
+  if (!destino.isConnected) return;
+
+  const pie = enLinea
+    ? '<div class="rank-cta">' +
+        '<button class="btn btn-ghost" id="dirCode">Tengo un código</button>' +
+        '<button class="btn btn-primary" id="dirCreate">Crear un grupo</button>' +
+      "</div>"
+    : "";
+
+  if (!lista.length) {
+    destino.innerHTML =
+      '<div class="sheet-empty">' +
+        (consulta ? "Ningún grupo abierto con ese nombre." : "Todavía no hay grupos abiertos.<br>Puedes crear el primero.") +
+      "</div>" + pie;
+  } else {
+    // Todo lo que viene del servidor lo escribe ahora cualquiera: pasa por
+    // escapeHtml sin excepción.
+    destino.innerHTML = '<div class="glist">' + lista.map((g, i) => {
+      const partes = [g.miembros + (g.miembros === 1 ? " persona" : " personas")];
+      if (g.trabajando) partes.push('<span class="viva">' + g.trabajando + " trabajando ahora</span>");
+      else if (g.en_linea) partes.push('<span class="viva">' + g.en_linea + " en línea</span>");
+      if (g.week_minutes > 0) partes.push(fmtMinutes(g.week_minutes) + " esta semana");
+      const actual = group && group.groupId === g.group_id;
+      return '<div class="gcard' + (actual ? " actual" : "") + '" style="animation-delay:' + Math.min(i * 40, 320) + 'ms">' +
+        '<div class="gcard-who">' +
+          '<div class="gcard-name">' + escapeHtml(g.name) + "</div>" +
+          '<div class="gcard-sub">' + partes.join(" · ") + "</div>" +
+        "</div>" +
+        (actual
+          ? '<span class="chip-tag">AQUÍ</span>'
+          : '<button class="btn btn-primary" data-entrar="' + escapeHtml(g.group_id) + '" data-nombre="' + escapeHtml(g.name) + '">Entrar</button>') +
+      "</div>";
+    }).join("") + "</div>" + pie;
+  }
+
+  destino.querySelectorAll("[data-entrar]").forEach((btn) => {
+    wireButton(btn, () => openJoinPublic(btn.dataset.entrar, btn.dataset.nombre, close));
+  });
+  if (enLinea) {
+    wireButton($("dirCode"), openJoinGroup);
+    wireButton($("dirCreate"), openCreateGroup);
+  }
+}
+
+function openJoinPublic(groupId, nombre, close) {
+  openModal(
+    "<h2>Entrar en " + escapeHtml(nombre) + "</h2>" +
+    '<div class="sub">Elige con qué nombre te verá el resto</div>' +
+    '<div class="fields">' +
+      '<div><div class="field-label">Tu apodo</div>' +
+        '<input class="text" id="gNick" maxlength="24" placeholder="Alex" value="' + escapeHtml(prefs.nickname || "") + '" /></div>' +
+    "</div>" +
+    '<div class="switch-row"><input type="checkbox" id="gPresence" />' +
+      '<span class="switch-text"><b>Compartir mi conexión</b>' +
+      '<span>Los demás verán si estás en sesión y cuándo fue tu última conexión. ' +
+      "Puedes dejarlo apagado: tus horas siguen contando en el ranking igual.</span></span></div>" +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
+      '<button class="btn btn-primary" id="gJoin">Entrar</button>' +
+    "</div>",
+    (cerrar) => {
+      $("gNick").focus();
+      const submit = async () => {
+        const button = $("gJoin");
+        if (button.disabled) return;
+        busy(button, true, "Entrar");
+        try {
+          const data = await rpc("dw_join_public", { p_group_id: groupId, p_nickname: $("gNick").value });
+          await entrarEnGrupo(data);
+          if ($("gPresence").checked) {
+            try { await rpc("dw_set_presence", { p_member: data.member_id, p_secret: data.secret, p_show: true }); group.showPresence = true; saveGroup(); }
+            catch (e) { /* se queda apagada, no es grave */ }
+          }
+          cerrar();
+          if (close) close();
+          toast("Dentro de " + data.name);
+        } catch (e) {
+          busy(button, false, "Entrar");
+          showModalError(e.message);
+        }
+      };
+      $("gNick").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      wireButton($("gCancel"), cerrar);
+      wireButton($("gJoin"), submit);
+    }
+  );
+}
+
+async function entrarEnGrupo(data) {
+  group = {
+    code: data.code, name: data.name, groupId: data.group_id,
+    memberId: data.member_id, secret: data.secret, nickname: data.nickname,
+    isPublic: !!data.is_public, isOwner: !!data.is_owner,
+    showPresence: data.show_presence !== false
+  };
+  saveGroup();
+  prefs.nickname = data.nickname;
+  savePrefs();
+  board = null;
+  boardAt = 0;
+  marcarSucio();
+  renderRanking();
+  haptic([10, 40, 18]);
+  await ciclo({ forzar: true, conDias: true });
+}
+
+function openGroupSettings() {
+  const publico = !!group.isPublic;
+  openModal(
+    "<h2>" + escapeHtml(group.name) + "</h2>" +
+    '<div class="sub">' + (publico ? "Grupo abierto a cualquiera" : "Grupo privado · código " + escapeHtml(group.code)) + "</div>" +
+    '<div class="switch-row"><input type="checkbox" id="sPresence"' + (group.showPresence ? " checked" : "") + ' />' +
+      '<span class="switch-text"><b>Compartir mi conexión</b>' +
+      "<span>Si lo apagas, nadie ve si estás en sesión ni tu última conexión. " +
+      "Tus horas siguen contando en el ranking.</span></span></div>" +
+    (group.isOwner
+      ? '<div class="switch-row"><input type="checkbox" id="sPublic"' + (publico ? " checked" : "") + ' />' +
+        '<span class="switch-text"><b>Grupo abierto</b>' +
+        "<span>Aparece en la lista de grupos y cualquiera puede entrar sin código. " +
+        "Al cerrarlo, quien ya tenga el código podrá seguir entrando.</span></span></div>"
+      : "") +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="sCode">Copiar código</button>' +
+      '<button class="btn btn-primary" id="sSave">Guardar</button>' +
+    "</div>" +
+    '<div class="rank-cta">' +
+      '<button class="link-btn" id="sRename">Cambiar apodo</button>' +
+      '<button class="link-btn" id="sLeave">Salir del grupo</button>' +
+    "</div>",
+    (cerrar) => {
+      wireButton($("sCode"), copyCode);
+      wireButton($("sRename"), () => { cerrar(); openRename(); });
+      wireButton($("sLeave"), () => { cerrar(); openLeave(); });
+      wireButton($("sSave"), async () => {
+        const button = $("sSave");
+        if (button.disabled) return;
+        const quiereP = $("sPresence").checked;
+        const quierePub = $("sPublic") ? $("sPublic").checked : publico;
+        busy(button, true, "Guardar");
+        try {
+          if (quiereP !== group.showPresence) {
+            await rpc("dw_set_presence", { p_member: group.memberId, p_secret: group.secret, p_show: quiereP });
+            group.showPresence = quiereP;
+          }
+          if (group.isOwner && quierePub !== publico) {
+            await rpc("dw_set_public", { p_member: group.memberId, p_secret: group.secret, p_public: quierePub });
+            group.isPublic = quierePub;
+          }
+          saveGroup();
+          cerrar();
+          renderRanking();
+          toast("Ajustes guardados");
+        } catch (e) {
+          busy(button, false, "Guardar");
+          showModalError(e.message);
+        }
+      });
+    }
+  );
 }
 
 function escapeHtml(s) {
@@ -1939,6 +2708,12 @@ function openCreateGroup() {
       '<div><div class="field-label">Tu apodo</div>' +
         '<input class="text" id="gNick" maxlength="24" placeholder="Alex" value="' + escapeHtml(prefs.nickname || "") + '" /></div>' +
     "</div>" +
+    // Casilla explícita y con las consecuencias escritas: abrir el grupo no
+    // puede ser un descuido.
+    '<div class="switch-row"><input type="checkbox" id="gPublic" />' +
+      '<span class="switch-text"><b>Grupo abierto</b>' +
+      "<span>Aparecerá en la lista de grupos y cualquiera podrá entrar y ver tus horas. " +
+      "Si lo dejas cerrado, sólo entra quien tenga el código.</span></span></div>" +
     '<div class="modal-actions">' +
       '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
       '<button class="btn btn-primary" id="gCreate">Crear</button>' +
@@ -1950,16 +2725,26 @@ function openCreateGroup() {
         if (button.disabled) return;   // Enter repetido no dispara varios envios
         busy(button, true, "Crear");
         try {
-          const data = await rpc("dw_create_group", { p_name: $("gName").value, p_nickname: $("gNick").value });
-          group = { code: data.code, name: data.name, memberId: data.member_id, secret: data.secret, nickname: data.nickname };
-          saveGroup();
-          prefs.nickname = data.nickname;
-          savePrefs();
+          const quiereAbierto = $("gPublic").checked;
+          let data, sinAbrir = false;
+          try {
+            data = await rpc("dw_create_group", {
+              p_name: $("gName").value,
+              p_nickname: $("gNick").value,
+              p_public: quiereAbierto
+            });
+          } catch (e) {
+            // La base todavía no tiene la firma de tres argumentos: se crea
+            // privado en vez de fallar, y se avisa.
+            if (!/404|Could not find|schema cache|not exist|not unique/i.test(String(e.message))) throw e;
+            data = await rpc("dw_create_group", { p_name: $("gName").value, p_nickname: $("gNick").value });
+            sinAbrir = quiereAbierto;
+          }
           close();
-          renderRanking();
-          await syncNow(false);
-          haptic([10, 40, 18]);
-          toast("Grupo creado · código " + data.code);
+          await entrarEnGrupo(data);
+          toast(sinAbrir
+            ? "Grupo creado como privado · código " + data.code
+            : "Grupo creado · código " + data.code, sinAbrir);
         } catch (e) {
           busy(button, false, "Crear");
           showModalError(e.message);
@@ -1995,14 +2780,8 @@ function openJoinGroup() {
         busy(button, true, "Entrar");
         try {
           const data = await rpc("dw_join_group", { p_code: $("gCode").value, p_nickname: $("gNick").value });
-          group = { code: data.code, name: data.name, memberId: data.member_id, secret: data.secret, nickname: data.nickname };
-          saveGroup();
-          prefs.nickname = data.nickname;
-          savePrefs();
           close();
-          renderRanking();
-          await syncNow(false);
-          haptic([10, 40, 18]);
+          await entrarEnGrupo(data);
           toast("Dentro de " + data.name);
         } catch (e) {
           busy(button, false, "Entrar");
@@ -2038,14 +2817,14 @@ function openRename() {
         try {
           await rpc("dw_push", {
             p_member: group.memberId, p_secret: group.secret,
-            p_days: daysPayload(), p_nickname: $("gNick").value
+            p_days: null, p_nickname: $("gNick").value
           });
           group.nickname = $("gNick").value.trim();
           saveGroup();
           prefs.nickname = group.nickname;
           savePrefs();
           close();
-          await fetchBoard(true);
+          await ciclo({ forzar: true });
           toast("Ahora eres " + group.nickname);
         } catch (e) {
           busy(button, false, "Guardar");
@@ -2108,7 +2887,23 @@ if (session) { startTicking(); acquireWakeLock(); }
 loadAsync();
 requestPersistence();
 renderRanking();
-if (group && supaReady()) syncNow(false);
+
+// El historial arranca plegado en móvil y abierto en pantallas grandes,
+// y a partir de ahí manda lo que el usuario decida.
+const fold = $("historyFold");
+fold.open = (typeof prefs.fold === "boolean") ? prefs.fold : innerWidth >= 760;
+fold.addEventListener("toggle", () => {
+  prefs.fold = fold.open;
+  savePrefs();
+  if (fold.open) { const w = $("gridWrap"); w.scrollLeft = w.scrollWidth; }
+});
+
+if (group && supaReady()) { flushPendingLeaves(); ciclo({ forzar: true, conDias: true }); }
+arrancarVigilante();
+arrancarRepintador();
+programarLatido();
+
+wireButton($("groupChip"), openGrupos);
 
 // scroll al final para que hoy quede a la vista en móvil
 const wrap = $("gridWrap");
@@ -2201,23 +2996,43 @@ window.addEventListener("storage", (e) => {
   if (!session) stopTicking();
 });
 
-// al volver a la app: recalcular, recuperar el bloqueo de pantalla y guardar
+// al volver a la app: recalcular, recuperar el bloqueo de pantalla y latir
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") return;
+  if (document.visibilityState !== "visible") { programarLatido(); return; }
   lastTodayKey = dateKey(new Date());
   checkRecovery();
   render();
+  refrescarPresencia();
   if (session) acquireWakeLock();
-  // al volver a la app, refresca el ranking si lleva más de un minuto parado
-  if (group && supaReady() && Date.now() - syncState.at > 60000) syncNow(false);
+  // Latido inmediato al volver: si no, el grupo te vería desconectado
+  // durante casi un minuto después de desbloquear el móvil.
+  if (group && supaReady()) ciclo({});
+  else programarLatido();
 });
 
-// se recupera la conexión: enviamos lo que quedó pendiente
-window.addEventListener("online", () => { if (group && supaReady()) syncNow(false); });
+// se recupera la conexión: sale lo que quedó pendiente
+window.addEventListener("online", () => {
+  fallosSeguidos = 0;
+  if (group && supaReady()) { flushPendingLeaves(); ciclo({ conDias: true }); }
+});
 
-// última red de seguridad: la sesión abierta queda anotada al salir
+/* Al salir se anota la sesión abierta y, si hay minutos sin enviar, se
+   intentan con keepalive (sendBeacon no vale: no admite cabeceras propias
+   y Supabase exige apikey y Authorization).
+
+   Lo importante es lo que NO se hace: no se manda un cierre de sesión.
+   Cerrar la pestaña es indistinguible de bloquear el móvil, y guardarse el
+   teléfono en el bolsillo es justo el caso de uso principal de la app. La
+   sesión se deja caducar sola en el servidor. */
 window.addEventListener("pagehide", () => {
   if (session) writeJSON(K.SESSION, session);
+  if (group && supaReady() && diasSucios) {
+    rpc("dw_sync", {
+      p_member: group.memberId, p_secret: group.secret,
+      p_days: daysPayload(), p_session_secs: sesionSegundos(),
+      p_board: false, p_today: dateKey(new Date())
+    }, { keepalive: true }).catch(() => {});
+  }
 });
 
 if ("serviceWorker" in navigator) {
