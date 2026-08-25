@@ -598,6 +598,15 @@ begin
 
   delete from dw_members where id = p_member;
 
+  -- Si no queda nadie, el grupo se borra solo. Un grupo vacío no le sirve
+  -- a nadie y, si era público, saldría en el directorio como un sitio con
+  -- cero personas dentro. El borrado arrastra en cascada dw_members y
+  -- dw_days, que a estas alturas ya están vacíos.
+  if not exists (select 1 from dw_members where group_id = v_group) then
+    delete from dw_groups where id = v_group;
+    return json_build_object('ok', true, 'group_deleted', true);
+  end if;
+
   -- Si se va el dueño, el mando pasa al miembro más antiguo que quede.
   select owner_id into v_owner from dw_groups where id = v_group;
   if v_owner = p_member then
@@ -611,7 +620,7 @@ begin
      where id = v_group;
   end if;
 
-  return json_build_object('ok', true);
+  return json_build_object('ok', true, 'group_deleted', false);
 end;
 $$;
 

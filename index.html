@@ -2016,10 +2016,23 @@ function ciclo(opciones) {
         renderRanking();
       }
     } catch (e) {
-      boardError = e.message;
-      fallosSeguidos++;
-      syncState = { state: "error", at: syncState.at, error: e.message };
-      renderSync();
+      // Si el miembro ya no existe (te sacaron, o el grupo se borró al
+      // quedarse vacío) no tiene sentido reintentar cada 45 segundos para
+      // siempre: se suelta el grupo en local y se avisa una sola vez.
+      if (/DW005|Credenciales no v/i.test(String(e.message)) && group && group.memberId === quien.id) {
+        group = null;
+        board = null;
+        boardAt = 0;
+        boardError = null;
+        saveGroup();
+        renderRanking();
+        toast("Ya no perteneces a ese grupo", true);
+      } else {
+        boardError = e.message;
+        fallosSeguidos++;
+        syncState = { state: "error", at: syncState.at, error: e.message };
+        renderSync();
+      }
     }
     enVuelo = null;
     programarLatido();
