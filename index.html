@@ -209,7 +209,9 @@
 
   .stage-actions { display: flex; gap: 8px; width: 100%; max-width: 340px; }
   .stage-actions .btn { flex: 1; min-height: 50px; font-size: 14px; }
-  .stage-actions .btn-ghost { flex: 0 0 auto; padding-left: 18px; padding-right: 18px; }
+  /* Pausar y Terminar se reparten por igual: durante una sesión pausar es
+     tan probable como terminar, y así los dos estados del escenario tienen
+     la misma forma. */
 
   .mini-stats { display: flex; gap: 10px; width: 100%; max-width: 340px; }
   .mini {
@@ -225,7 +227,22 @@
   }
   .mini-label { font-size: 10px; color: var(--dim); margin-top: 2px; }
 
-  .stage-add { margin-top: -4px; }
+  .stage-extra { margin-top: -4px; min-height: 34px; display: flex; align-items: center; }
+
+  /* En pausa: el anillo se apaga a medias y la cifra se queda legible.
+     El estado se ve por la forma del boton y por el rotulo, no sólo por
+     el color, que es lo mismo que se hizo con los puntos de presencia. */
+  body.paused .stage {
+    border-color: rgba(173,173,189,.24);
+    box-shadow: 0 0 0 1px rgba(255,255,255,.04), 0 10px 40px rgba(0,0,0,.28);
+  }
+  body.paused .dial-clock { opacity: .72; }
+  body.paused .dial-state { color: var(--muted); }
+  /* :not(.done) para no pisar el verde del objetivo cumplido, que tiene
+     la misma especificidad y perdía por ir antes en el fichero. */
+  body.paused .dial-arc:not(.done) { stroke: var(--muted); }
+  body.paused .dial-arc { opacity: .55; }
+  body.paused .dial-wrap::after { content: none; }
 
   /* ---------- historial plegado ---------- */
   .fold { padding: 0; }
@@ -268,7 +285,6 @@
   }
   @keyframes ripple { to { transform: scale(2.6); opacity: 0; } }
 
-  .divider { width: 1px; align-self: stretch; background: var(--line); }
 
   /* ---------- rejilla ---------- */
   .grid-wrap { overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
@@ -321,7 +337,6 @@
     .step-btn:hover { background: var(--raised); }
     .chip:hover { color: var(--text); border-color: var(--line-2); }
     .link-btn:hover { color: var(--text); background: rgba(255,255,255,.07); }
-    .code-chip:hover { border-color: var(--accent); background: var(--raised); }
     .metric-tab:hover { color: var(--muted); }
     .rank-row:hover { background: rgba(255,255,255,.04); }
   }
@@ -363,7 +378,7 @@
 
   /* ---------- modal ---------- */
   .backdrop {
-    position: fixed; inset: 0; z-index: 60;
+    position: fixed; inset: 0; z-index: 90;   /* por encima de la hoja: se abre desde ella */
     background: var(--veil); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     display: flex; align-items: center; justify-content: center;
     animation: fadeIn .2s var(--ease);
@@ -449,7 +464,7 @@
   /* ---------- toast ---------- */
   .toast-wrap {
     position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom));
-    transform: translateX(-50%); z-index: 80;
+    transform: translateX(-50%); z-index: 100;
     display: flex; flex-direction: column; gap: 8px; align-items: center;
     pointer-events: none;
   }
@@ -468,7 +483,7 @@
   /* ---------- hoja de grupos ----------
      Descubrir es hojear: hace falta alto y scroll, no un modal de 340px. */
   .sheet-back {
-    position: fixed; inset: 0; z-index: 70;
+    position: fixed; inset: 0; z-index: 60;
     background: var(--veil); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     display: flex; align-items: flex-end; justify-content: center;
     animation: fadeIn .2s var(--ease);
@@ -527,7 +542,13 @@
     border-radius: 12px; padding: 12px 13px; margin-bottom: 14px;
     cursor: pointer;
   }
-  .switch-row input { width: auto; margin: 2px 0 0; flex-shrink: 0; accent-color: var(--accent); }
+  /* 22px y dentro de un <label>: a 12px no había quien las tocara con el
+     dedo, y sin etiqueta asociada el lector de pantalla no decía qué eran. */
+  .switch-row input {
+    width: 22px; height: 22px; margin: 0; flex-shrink: 0;
+    accent-color: var(--accent); cursor: pointer;
+  }
+  .switch-row:focus-within { border-color: var(--accent); }
   .switch-text { font-size: 12.5px; line-height: 1.5; }
   .switch-text b { display: block; font-size: 13px; margin-bottom: 2px; font-weight: 650; }
   .switch-text span { color: var(--dim); }
@@ -547,16 +568,6 @@
   .rank-head h2 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
   .rank-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-  .code-chip {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: var(--panel-2); border: 1px solid var(--line-2);
-    border-radius: 10px; padding: 7px 10px; cursor: pointer;
-    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
-    font-size: 13px; letter-spacing: .12em; color: var(--text);
-    transition: transform .18s var(--spring), border-color .2s, background .2s;
-  }
-  .code-chip:active { transform: scale(.96); }
-  .code-chip .hint { font-family: inherit; font-size: 10px; letter-spacing: 0; color: var(--dim); }
 
   /* ---------- pestañas Gente / Ranking ---------- */
   .view-tabs { display: flex; gap: 4px; background: var(--panel); border-radius: 10px; padding: 3px; }
@@ -750,7 +761,6 @@
     .chip { min-height: 38px; padding: 9px 13px; }
     .link-btn { min-height: 40px; padding: 10px 12px; font-size: 12px; }
     .summary { gap: 12px 14px; }
-    .code-chip { min-height: 44px; }
 
     /* El toast se quedaba encajonado en la mitad del ancho */
     .toast-wrap { left: 12px; right: 12px; transform: none; }
@@ -803,7 +813,7 @@
       <div class="mini"><div class="mini-value" id="statStreak" aria-label="Racha: 0 días">0 días</div><div class="mini-label" aria-hidden="true">Racha</div></div>
     </div>
 
-    <button class="link-btn stage-add" id="manualOpenBtn">+ Añadir tiempo a mano</button>
+    <div class="stage-extra" id="stageExtra"></div>
   </main>
 
   <!-- ===================== gente y ranking =====================
@@ -1076,12 +1086,17 @@ function loadSync() {
   // pestaña, esta seguía contando y al pararla aquí sumaba el rato por
   // segunda vez.
   const raw = readJSON(K.SESSION) || readJSON(K.OLD_SES);
-  const valida = raw && typeof raw.startedAt === "number" &&
-                 raw.startedAt > 0 && raw.startedAt <= Date.now();
+  // startedAt puede ser null si quedó en pausa; entonces vale con que haya
+  // tramos guardados. Y se acepta el formato antiguo, sin tramos.
+  const enPausa = raw && raw.startedAt === null && Array.isArray(raw.tramos) && raw.tramos.length > 0;
+  const valida = enPausa || (raw && typeof raw.startedAt === "number" &&
+                 raw.startedAt > 0 && raw.startedAt <= Date.now());
   // Con el aviso de recuperación en pantalla, K.SESSION sigue ahí a
   // propósito (para que sobreviva a una recarga), así que no se reactiva
   // sola: la decisión de guardarla o tirarla es del usuario.
-  session = valida && !pendingRecovery ? { startedAt: raw.startedAt } : null;
+  session = valida && !pendingRecovery
+    ? { startedAt: raw.startedAt || null, tramos: Array.isArray(raw.tramos) ? raw.tramos : [] }
+    : null;
 }
 
 async function loadAsync() {
@@ -1199,8 +1214,28 @@ function releaseWakeLock() {
   wakeLock = null;
 }
 
+/* Una sesión se guarda como tramos de trabajo más el que esté abierto:
+   { startedAt: <ms o null si está en pausa>, tramos: [{from, to}, ...] }.
+   Guardar tramos y no un total acumulado es lo que permite que
+   commitRange() siga repartiendo bien entre días: una sesión que empieza
+   a las 23:40, se pausa y se reanuda a las 00:20 tiene que dejar minutos
+   en los dos días, no todos en uno. */
+function tramosDe(s) {
+  return (s && Array.isArray(s.tramos)) ? s.tramos : [];
+}
+function sessionPausada() {
+  return !!session && !session.startedAt;
+}
+function sessionMs() {
+  if (!session) return 0;
+  let total = 0;
+  for (const t of tramosDe(session)) total += Math.max(0, t.to - t.from);
+  if (session.startedAt) total += Math.max(0, Date.now() - session.startedAt);
+  return total;
+}
+
 function startSession() {
-  session = { startedAt: Date.now() };
+  session = { startedAt: Date.now(), tramos: [] };
   writeJSON(K.SESSION, session);
   haptic(12);
   acquireWakeLock();
@@ -1208,6 +1243,32 @@ function startSession() {
   startTicking();
   toast("Sesión iniciada");
   // El grupo se entera en el acto, no dentro de 45 segundos.
+  if (group && supaReady()) ciclo({});
+}
+
+function pauseSession() {
+  if (!session || !session.startedAt) return;
+  session.tramos = tramosDe(session).concat([{ from: session.startedAt, to: Date.now() }]);
+  session.startedAt = null;
+  writeJSON(K.SESSION, session);
+  stopTicking();
+  releaseWakeLock();        // en pausa no hace falta mantener la pantalla
+  haptic(10);
+  render();
+  toast("Sesión en pausa");
+  // Se deja de anunciar como "en sesión": en pausa no estás trabajando.
+  if (group && supaReady()) ciclo({});
+}
+
+function resumeSession() {
+  if (!session || session.startedAt) return;
+  session.startedAt = Date.now();
+  writeJSON(K.SESSION, session);
+  acquireWakeLock();
+  startTicking();
+  haptic(12);
+  render();
+  toast("Sesión reanudada");
   if (group && supaReady()) ciclo({});
 }
 
@@ -1229,8 +1290,11 @@ function commitRange(from, to) {
 
 function stopSession() {
   if (!session) return;
-  const started = session.startedAt;
-  const elapsed = (Date.now() - started) / 60000;
+  // Se cierra el tramo abierto, si lo había, y se guardan todos.
+  const tramos = tramosDe(session).slice();
+  if (session.startedAt) tramos.push({ from: session.startedAt, to: Date.now() });
+  const elapsed = tramos.reduce((n, t) => n + Math.max(0, t.to - t.from), 0) / 60000;
+
   session = null;
   localStorage.removeItem(K.SESSION);
   localStorage.removeItem(K.OLD_SES);
@@ -1238,7 +1302,8 @@ function stopSession() {
   releaseWakeLock();
 
   if (elapsed >= MIN_SAVE_MIN) {
-    commitRange(started, Date.now());
+    // Tramo a tramo: cada uno se reparte entre los días que toque.
+    for (const t of tramos) commitRange(t.from, t.to);
     haptic([10, 40, 18]);
     render();
     popToday();
@@ -1279,7 +1344,7 @@ function tick() {
 
   pintarReloj();
   if (session) {
-    document.title = fmtClock(Math.floor((Date.now() - session.startedAt) / 1000)) + " · Deep Work";
+    document.title = fmtClock(Math.floor(sessionMs() / 1000)) + " · Deep Work";
   }
   updateStats();
   updateTodayCell();
@@ -1293,11 +1358,24 @@ function tick() {
    buenas ocho horas de trabajo: preguntamos. */
 
 function checkRecovery() {
-  if (!session) return;
-  const hours = (Date.now() - session.startedAt) / 3600000;
-  if (hours < LONG_SESSION_H) return;
+  if (!session || !session.startedAt) return;   // en pausa no corre el tiempo
 
-  pendingRecovery = { startedAt: session.startedAt, hours: hours };
+  // El umbral mira SÓLO el tramo abierto, que es el único que puede
+  // haberse quedado colgado con el móvil apagado. Medir el acumulado
+  // mataba jornadas legítimas: 3 h por la mañana + pausa para comer +
+  // 2 h por la tarde ya pasaban de LONG_SESSION_H, y al volver a la
+  // pestaña la sesión en marcha se moría en la cara.
+  const abiertoH = (Date.now() - session.startedAt) / 3600000;
+  if (abiertoH < LONG_SESSION_H) return;
+
+  // El corte se congela AQUÍ, no cuando se pulsa el botón: si no, el
+  // aviso podía quedarse una hora en pantalla, guardarse hasta el
+  // instante del clic y solaparse con una sesión empezada mientras tanto,
+  // contando dos veces la misma franja.
+  const abierto = { from: session.startedAt, to: Date.now() };
+  const tramos = tramosDe(session).slice().concat([abierto]);
+  const totalH = tramos.reduce((n, t) => n + Math.max(0, t.to - t.from), 0) / 3600000;
+  pendingRecovery = { startedAt: session.startedAt, hours: totalH, abiertoH: abiertoH, tramos: tramos };
   session = null;
   stopTicking();
   renderNotice();
@@ -1334,7 +1412,10 @@ function renderNotice() {
 
   wireButton($("recKeep"), () => {
     const mins = pendingRecovery.hours * 60;
-    commitRange(pendingRecovery.startedAt, Date.now());
+    // Los tramos ya incluyen el abierto, cerrado en el momento de la
+    // detección: lo que se guarda coincide exactamente con lo que dice el
+    // aviso, pase el tiempo que pase hasta que se pulsa.
+    for (const t of (pendingRecovery.tramos || [])) commitRange(t.from, t.to);
     cerrarAviso();
     render();
     popToday();
@@ -1391,8 +1472,13 @@ function openModal(html, setup) {
     const lista = enfocables();
     if (!lista.length) return;
     const primero = lista[0], ultimo = lista[lista.length - 1];
-    if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
-    else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primero.focus(); }
+    // Se contempla el caso de que el foco esté en la propia caja (que es
+    // donde lo deja openModal cuando nadie lo pide): con shift+Tab desde
+    // ahí, el foco se escapaba a la capa de debajo.
+    const foco = document.activeElement;
+    if (!caja.contains(foco)) { e.preventDefault(); (e.shiftKey ? ultimo : primero).focus(); return; }
+    if (e.shiftKey && (foco === primero || foco === caja)) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && foco === ultimo) { e.preventDefault(); primero.focus(); }
   };
 
   backdrop.addEventListener("mousedown", (e) => { if (e.target === backdrop) close(); });
@@ -1549,7 +1635,7 @@ function importData(file) {
 /* ----------------------------- render ------------------------------- */
 
 function liveMinutes() {
-  return session ? (Date.now() - session.startedAt) / 60000 : 0;
+  return sessionMs() / 60000;
 }
 
 /* Parte de la sesion en marcha que cae dentro de un dia concreto. Antes se
@@ -1560,12 +1646,21 @@ function liveMinutes() {
    los domingos de cambio de hora (23 o 25 horas) salgan bien. */
 function liveMinutesOn(key) {
   if (!session) return 0;
-  const inicio = keyToDate(key);
-  const fin = new Date(inicio);
+  const inicio = keyToDate(key).getTime();
+  const fin = new Date(keyToDate(key));
   fin.setDate(fin.getDate() + 1);
-  const desde = Math.max(session.startedAt, inicio.getTime());
-  const hasta = Math.min(Date.now(), fin.getTime());
-  return hasta > desde ? (hasta - desde) / 60000 : 0;
+  const finMs = fin.getTime();
+
+  const abiertos = tramosDe(session).slice();
+  if (session.startedAt) abiertos.push({ from: session.startedAt, to: Date.now() });
+
+  let ms = 0;
+  for (const t of abiertos) {
+    const desde = Math.max(t.from, inicio);
+    const hasta = Math.min(t.to, finMs);
+    if (hasta > desde) ms += hasta - desde;
+  }
+  return ms / 60000;
 }
 
 function minutesForDay(key) {
@@ -1577,7 +1672,8 @@ function render() {
   // con la app abierta, la barra de objetivo seguía midiendo contra el día
   // anterior porque lastTodayKey se había quedado atrás.
   lastTodayKey = dateKey(new Date());
-  document.body.classList.toggle("running", !!session);
+  document.body.classList.toggle("running", !!session && !sessionPausada());
+  document.body.classList.toggle("paused", sessionPausada());
   renderTimer();
   renderNotice();
   renderGrid();
@@ -1591,16 +1687,26 @@ function renderTimer() {
   const buttons = $("timerButtons");
 
   if (session) {
+    const pausada = sessionPausada();
     buttons.innerHTML =
-      '<button class="btn btn-stop" id="stopBtn">■ Terminar</button>' +
-      '<button class="btn btn-ghost" id="discardBtn">Descartar</button>';
+      (pausada
+        ? '<button class="btn btn-primary" id="resumeBtn">▶ Reanudar</button>'
+        : '<button class="btn btn-ghost" id="pauseBtn">❚❚ Pausar</button>') +
+      '<button class="btn btn-stop" id="stopBtn">■ Terminar</button>';
+    if (pausada) wireButton($("resumeBtn"), resumeSession);
+    else wireButton($("pauseBtn"), pauseSession);
     wireButton($("stopBtn"), stopSession);
+    $("dialState").textContent = pausada ? "EN PAUSA" : "EN SESIÓN";
+    // Descartar deja de compartir fila con los botones grandes: con tres
+    // no caben en un movil, y es la accion que menos se usa.
+    $("stageExtra").innerHTML = '<button class="link-btn" id="discardBtn">Descartar sesión</button>';
     wireButton($("discardBtn"), discardSession);
-    $("dialState").textContent = "EN SESIÓN";
   } else {
     buttons.innerHTML = '<button class="btn btn-primary" id="startBtn">● Empezar sesión</button>';
     wireButton($("startBtn"), startSession);
     $("dialState").textContent = "LISTO";
+    $("stageExtra").innerHTML = '<button class="link-btn" id="manualOpenBtn">+ Añadir tiempo a mano</button>';
+    wireButton($("manualOpenBtn"), () => openDayEditor(dateKey(new Date())));
   }
   pintarReloj();
 }
@@ -1610,7 +1716,7 @@ function renderTimer() {
 function pintarReloj() {
   const clock = $("timerClock");
   if (session) {
-    const secs = Math.max(0, Math.floor((Date.now() - session.startedAt) / 1000));
+    const secs = Math.max(0, Math.floor(sessionMs() / 1000));
     const largo = secs >= 3600;
     clock.textContent = largo
       ? fmtClock(secs)
@@ -1911,8 +2017,10 @@ function daysPayload() {
    leerla a pelo te anunciaría "en sesión desde hace 8 horas" a todo el
    grupo mientras miras el aviso sin decidirte. */
 function sesionSegundos() {
-  if (pendingRecovery || !session) return null;
-  const secs = Math.floor((Date.now() - session.startedAt) / 1000);
+  // En pausa no se anuncia sesión: decir "en sesión" de alguien que la ha
+  // parado sería mentir al grupo.
+  if (pendingRecovery || !session || !session.startedAt) return null;
+  const secs = Math.floor(sessionMs() / 1000);
   if (secs < 0 || secs > P.FANTASMA_H * 3600) return null;
   return secs;
 }
@@ -2083,13 +2191,20 @@ async function flushPendingLeaves() {
   if (!supaReady()) return;
   const cola = readJSON(K.PENDING_LEAVE);
   if (!cola || !cola.length) return;
-  const quedan = [];
+
+  // Se retira de la cola sólo lo que se ha resuelto de verdad, una por
+  // una. Reescribir la cola entera al final machacaba las bajas que se
+  // hubieran encolado mientras las peticiones volaban, y un DW005
+  // (miembro que ya no existe) se reintentaba eternamente.
   for (const credenciales of cola) {
-    try { await rpc("dw_leave", credenciales); }
-    catch (e) { quedan.push(credenciales); }
+    if (group && credenciales.p_member === group.memberId) { desencolarBaja(credenciales.p_member); continue; }
+    try {
+      await rpc("dw_leave", credenciales);
+      desencolarBaja(credenciales.p_member);
+    } catch (e) {
+      if (/DW005|Credenciales no v/i.test(String(e.message))) desencolarBaja(credenciales.p_member);
+    }
   }
-  if (quedan.length) writeJSON(K.PENDING_LEAVE, quedan);
-  else localStorage.removeItem(K.PENDING_LEAVE);
 }
 
 async function syncNow(announce) {
@@ -2189,16 +2304,30 @@ function inicialDe(nombre) {
 /* Fila de datos común a las dos pestañas: mis propias cifras llevan
    sumada la sesión en marcha, que el servidor todavía no conoce. */
 function filasDelGrupo() {
-  const live = liveMinutes();
+  // Cada cifra recibe la parte de la sesión que le toca. Sumar
+  // liveMinutes() entera a "hoy" y a "la semana" deshacía el reparto por
+  // días: una sesión empezada anoche inflaba el día de hoy con minutos de
+  // ayer, y la semana con minutos de la semana pasada.
+  const liveTotal = liveMinutes();
+  const liveHoy = liveMinutesOn(lastTodayKey);
+  let liveSemana = 0;
+  {
+    const lunes = startOfWeek(new Date());
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(lunes);
+      d.setDate(d.getDate() + i);
+      liveSemana += liveMinutesOn(dateKey(d));
+    }
+  }
   return (board || []).map((m) => {
     const mine = group && m.member_id === group.memberId;
     return {
       raw: m,
       mine: !!mine,
       nickname: m.nickname,
-      today: (m.today || 0) + (mine ? live : 0),
-      week:  (m.week  || 0) + (mine ? live : 0),
-      total: (m.total || 0) + (mine ? live : 0),
+      today: (m.today || 0) + (mine ? liveHoy : 0),
+      week:  (m.week  || 0) + (mine ? liveSemana : 0),
+      total: (m.total || 0) + (mine ? liveTotal : 0),
       streak: m.streak || 0,
       lastDay: m.last_day || null,
       estado: mine && session ? "sesion" : estadoDe(m)
@@ -2450,27 +2579,64 @@ function openSheet(titulo, cuerpoHtml, pieHtml, setup) {
   back.innerHTML =
     '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + escapeHtml(titulo) + '">' +
       '<div class="sheet-head"><h2>' + escapeHtml(titulo) + "</h2>" +
-        '<button class="link-btn" id="sheetClose" aria-label="Cerrar">Cerrar</button></div>' +
-      '<div class="sheet-body" id="sheetBody">' + cuerpoHtml + "</div>" +
+        '<button class="link-btn" data-cerrar aria-label="Cerrar">Cerrar</button></div>' +
+      '<div class="sheet-body">' + cuerpoHtml + "</div>" +
       (pieHtml ? '<div class="sheet-foot">' + pieHtml + "</div>" : "") +
     "</div>";
   slot.appendChild(back);
+
+  // Referencias directas, nunca $(). Al reabrir la hoja, la anterior sigue
+  // 220 ms en el DOM mientras se cierra, y un getElementById devolvía la
+  // que se estaba muriendo: la hoja nueva nacía sin listeners.
+  const caja = back.querySelector(".sheet");
+  const cuerpo = back.querySelector(".sheet-body");
+  const btnCerrar = back.querySelector("[data-cerrar]");
 
   const close = () => {
     back.classList.add("closing");
     setTimeout(() => back.remove(), 220);
     document.removeEventListener("keydown", onKey, true);
-    closeSheet = null;
+    if (closeSheet === close) closeSheet = null;
     if (antes && antes.focus) { try { antes.focus(); } catch (e) { /* ya no existe */ } }
   };
-  const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
 
-  back.addEventListener("mousedown", (e) => { if (e.target === back) close(); });
+  const enfocables = () => caja.querySelectorAll(
+    'button:not([disabled]), input:not([disabled]), [href], select, textarea, [tabindex]:not([tabindex="-1"])'
+  );
+
+  const onKey = (e) => {
+    // Con un modal abierto encima, las teclas le tocan a él.
+    if (closeModal) return;
+    if (e.key === "Escape") { e.preventDefault(); close(); return; }
+    if (e.key !== "Tab") return;
+    // El foco se queda dentro de la hoja: antes el tabulador seguía
+    // recorriendo la página de debajo, que sigue en el DOM.
+    const lista = enfocables();
+    if (!lista.length) return;
+    const primero = lista[0], ultimo = lista[lista.length - 1];
+    const dentro = caja.contains(document.activeElement);
+    if (!dentro) { e.preventDefault(); (e.shiftKey ? ultimo : primero).focus(); return; }
+    if (e.shiftKey && (document.activeElement === primero || document.activeElement === caja)) {
+      e.preventDefault(); ultimo.focus();
+    } else if (!e.shiftKey && document.activeElement === ultimo) {
+      e.preventDefault(); primero.focus();
+    }
+  };
+
+  back.addEventListener("mousedown", (e) => {
+    if (closeModal) return;              // el modal de encima manda
+    if (e.target === back) close();      // sólo el fondo, no la hoja
+  });
   document.addEventListener("keydown", onKey, true);
-  wireButton($("sheetClose"), close);
+  wireButton(btnCerrar, close);
   closeSheet = close;
-  if (setup) setup(close, $("sheetBody"));
+
+  caja.setAttribute("tabindex", "-1");
+  caja.focus();
+
+  if (setup) setup(close, cuerpo);
 }
+
 
 function openGrupos() {
   openSheet(
@@ -2479,16 +2645,21 @@ function openGrupos() {
     '<div id="directorio"></div>',
     '<button class="btn btn-ghost" id="sheetCode">Tengo un código</button>' +
     '<button class="btn btn-primary" id="sheetCreate">Crear un grupo</button>',
-    (close) => {
-      renderDirectorio($("directorio"), false, close);
-      const campo = $("gQuery");
+    // Todo se busca DENTRO de esta hoja, no con getElementById: al
+    // reabrirla, la anterior sigue un rato en el DOM y las búsquedas por id
+    // devolvían sus elementos, dejando la hoja nueva sin funcionar.
+    (close, cuerpo) => {
+      const hoja = cuerpo.closest(".sheet");
+      const destino = cuerpo.querySelector("#directorio");
+      const campo = cuerpo.querySelector("#gQuery");
+      renderDirectorio(destino, false, close);
       let t = null;
       campo.oninput = () => {
         clearTimeout(t);
-        t = setTimeout(() => renderDirectorio($("directorio"), false, close, campo.value), 300);
+        t = setTimeout(() => renderDirectorio(destino, false, close, campo.value), 300);
       };
-      wireButton($("sheetCode"), () => { close(); openJoinGroup(); });
-      wireButton($("sheetCreate"), () => { close(); openCreateGroup(); });
+      wireButton(hoja.querySelector("#sheetCode"), () => { close(); openJoinGroup(); });
+      wireButton(hoja.querySelector("#sheetCreate"), () => { close(); openCreateGroup(); });
     }
   );
 }
@@ -2592,7 +2763,47 @@ function openJoinPublic(groupId, nombre, close) {
   );
 }
 
+/* Da de baja el miembro anterior al cambiar de grupo o de apodo.
+   Sin esto, entrar otra vez dejaba tu identidad vieja viva en el
+   servidor: aparecías dos veces en la misma tabla, cada una con sus
+   horas, y el total del grupo salía duplicado. Se hace DESPUÉS de que el
+   alta nueva haya ido bien, para no quedarte sin grupo si falla; si la
+   baja no sale, entra en la cola de pendientes y se reintenta. */
+function encolarBaja(credenciales) {
+  const cola = readJSON(K.PENDING_LEAVE) || [];
+  if (cola.some((c) => c.p_member === credenciales.p_member)) return;
+  cola.push(credenciales);
+  writeJSON(K.PENDING_LEAVE, cola);
+}
+function desencolarBaja(memberId) {
+  const cola = readJSON(K.PENDING_LEAVE) || [];
+  const quedan = cola.filter((c) => c.p_member !== memberId);
+  if (quedan.length) writeJSON(K.PENDING_LEAVE, quedan);
+  else localStorage.removeItem(K.PENDING_LEAVE);
+}
+
+async function bajaAnterior(anterior) {
+  if (!anterior || !anterior.memberId) return;
+  const credenciales = { p_member: anterior.memberId, p_secret: anterior.secret };
+  try {
+    await rpc("dw_leave", credenciales);
+    desencolarBaja(credenciales.p_member);
+  } catch (e) {
+    // DW005 significa que ese miembro ya no existe: nada que reintentar.
+    if (/DW005|Credenciales no v/i.test(String(e.message))) desencolarBaja(credenciales.p_member);
+    // si falla por red, se queda en la cola y se reintenta
+  }
+}
+
 async function entrarEnGrupo(data) {
+  const anterior = group;
+  // La baja se apunta ANTES de pisar el grupo local. Si la app se cierra
+  // justo aquí, la credencial vieja sigue en la cola y la baja se
+  // reintenta al arrancar; antes se perdía y el miembro quedaba huérfano
+  // para siempre, duplicando tus horas en la tabla.
+  if (anterior && anterior.memberId && anterior.memberId !== data.member_id) {
+    encolarBaja({ p_member: anterior.memberId, p_secret: anterior.secret });
+  }
   group = {
     code: data.code, name: data.name, groupId: data.group_id,
     memberId: data.member_id, secret: data.secret, nickname: data.nickname,
@@ -2607,60 +2818,106 @@ async function entrarEnGrupo(data) {
   marcarSucio();
   renderRanking();
   haptic([10, 40, 18]);
+  if (anterior && anterior.memberId !== group.memberId) await bajaAnterior(anterior);
   await ciclo({ forzar: true, conDias: true });
 }
 
 function openGroupSettings() {
   const publico = !!group.isPublic;
+  const dueno = !!group.isOwner;
+
   openModal(
-    "<h2>" + escapeHtml(group.name) + "</h2>" +
-    '<div class="sub">' + (publico ? "Grupo abierto a cualquiera" : "Grupo privado · código " + escapeHtml(group.code)) + "</div>" +
+    "<h2>Ajustes del grupo</h2>" +
+    '<div class="sub">' + (publico
+      ? "Grupo abierto a cualquiera"
+      // Se vuelve a enseñar el código: se puede copiar, pero también hace
+      // falta poder leerlo para dictárselo a alguien.
+      : 'Grupo privado · código <b style="letter-spacing:.12em">' + escapeHtml(group.code) + "</b>") + "</div>" +
+    '<div class="fields">' +
+      '<div><div class="field-label">Tu apodo</div>' +
+        '<input class="text" id="sNick" maxlength="24" value="' + escapeHtml(group.nickname) + '" /></div>' +
+      (dueno
+        ? '<div><div class="field-label">Nombre del grupo</div>' +
+          '<input class="text" id="sName" maxlength="40" value="' + escapeHtml(group.name) + '" /></div>'
+        : '<div><div class="field-label">Grupo</div>' +
+          '<input class="text" value="' + escapeHtml(group.name) + '" disabled /></div>') +
+    "</div>" +
     '<div class="switch-row"><input type="checkbox" id="sPresence"' + (group.showPresence ? " checked" : "") + ' />' +
       '<span class="switch-text"><b>Compartir mi conexión</b>' +
       "<span>Si lo apagas, nadie ve si estás en sesión ni tu última conexión. " +
       "Tus horas siguen contando en el ranking.</span></span></div>" +
-    (group.isOwner
+    (dueno
       ? '<div class="switch-row"><input type="checkbox" id="sPublic"' + (publico ? " checked" : "") + ' />' +
         '<span class="switch-text"><b>Grupo abierto</b>' +
         "<span>Aparece en la lista de grupos y cualquiera puede entrar sin código. " +
         "Al cerrarlo, quien ya tenga el código podrá seguir entrando.</span></span></div>"
       : "") +
     '<div class="modal-actions">' +
-      '<button class="btn btn-ghost" id="sCode">Copiar código</button>' +
+      '<button class="btn btn-ghost" id="sCancel">Cancelar</button>' +
       '<button class="btn btn-primary" id="sSave">Guardar</button>' +
     "</div>" +
     '<div class="rank-cta">' +
-      '<button class="link-btn" id="sRename">Cambiar apodo</button>' +
+      '<button class="link-btn" id="sCode">Copiar código</button>' +
       '<button class="link-btn" id="sLeave">Salir del grupo</button>' +
     "</div>",
     (cerrar) => {
       wireButton($("sCode"), copyCode);
-      wireButton($("sRename"), () => { cerrar(); openRename(); });
+      wireButton($("sCancel"), cerrar);
       wireButton($("sLeave"), () => { cerrar(); openLeave(); });
-      wireButton($("sSave"), async () => {
+
+      const guardar = async () => {
         const button = $("sSave");
         if (button.disabled) return;
+
+        const nick = $("sNick").value.trim();
+        const nombre = $("sName") ? $("sName").value.trim() : group.name;
         const quiereP = $("sPresence").checked;
         const quierePub = $("sPublic") ? $("sPublic").checked : publico;
+
         busy(button, true, "Guardar");
         try {
+          // El apodo va primero: si choca con otro del grupo, no se ha
+          // tocado nada más y el error sale limpio.
+          if (nick && nick !== group.nickname) {
+            await rpc("dw_push", {
+              p_member: group.memberId, p_secret: group.secret,
+              p_days: null, p_nickname: nick
+            });
+            group.nickname = nick;
+            prefs.nickname = nick;
+            savePrefs();
+            saveGroup();          // a disco ya: si el siguiente paso falla,
+          }                       // lo conseguido no se pierde al recargar
+          if (dueno && nombre && nombre !== group.name) {
+            const r = await rpc("dw_rename_group", {
+              p_member: group.memberId, p_secret: group.secret, p_name: nombre
+            });
+            group.name = (r && r.name) || nombre;
+            saveGroup();
+          }
           if (quiereP !== group.showPresence) {
             await rpc("dw_set_presence", { p_member: group.memberId, p_secret: group.secret, p_show: quiereP });
             group.showPresence = quiereP;
+            saveGroup();
           }
-          if (group.isOwner && quierePub !== publico) {
+          if (dueno && quierePub !== publico) {
             await rpc("dw_set_public", { p_member: group.memberId, p_secret: group.secret, p_public: quierePub });
             group.isPublic = quierePub;
           }
           saveGroup();
           cerrar();
           renderRanking();
+          await ciclo({ forzar: true });
           toast("Ajustes guardados");
         } catch (e) {
           busy(button, false, "Guardar");
           showModalError(e.message);
         }
-      });
+      };
+
+      document.querySelectorAll(".modal input.text").forEach((i) =>
+        i.addEventListener("keydown", (e) => { if (e.key === "Enter") guardar(); }));
+      wireButton($("sSave"), guardar);
     }
   );
 }
@@ -2809,47 +3066,6 @@ function openJoinGroup() {
   );
 }
 
-function openRename() {
-  openModal(
-    "<h2>Cambiar apodo</h2>" +
-    '<div class="sub">Así te verá el resto del grupo</div>' +
-    '<div class="fields">' +
-      '<div><input class="text" id="gNick" maxlength="24" value="' + escapeHtml(group.nickname) + '" /></div>' +
-    "</div>" +
-    '<div class="modal-actions">' +
-      '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
-      '<button class="btn btn-primary" id="gSave">Guardar</button>' +
-    "</div>",
-    (close) => {
-      $("gNick").focus();
-      $("gNick").select();
-      const submit = async () => {
-        const button = $("gSave");
-        if (button.disabled) return;   // Enter repetido no dispara varios envios
-        busy(button, true, "Guardar");
-        try {
-          await rpc("dw_push", {
-            p_member: group.memberId, p_secret: group.secret,
-            p_days: null, p_nickname: $("gNick").value
-          });
-          group.nickname = $("gNick").value.trim();
-          saveGroup();
-          prefs.nickname = group.nickname;
-          savePrefs();
-          close();
-          await ciclo({ forzar: true });
-          toast("Ahora eres " + group.nickname);
-        } catch (e) {
-          busy(button, false, "Guardar");
-          showModalError(e.message);
-        }
-      };
-      $("gNick").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
-      wireButton($("gCancel"), close);
-      wireButton($("gSave"), submit);
-    }
-  );
-}
 
 function openLeave() {
   openModal(
@@ -2896,7 +3112,7 @@ loadSync();
 if (Object.keys(doc.days).length) persist();   // migra el formato antiguo a las claves nuevas
 checkRecovery();
 render();
-if (session) { startTicking(); acquireWakeLock(); }
+if (session && !sessionPausada()) { startTicking(); acquireWakeLock(); }
 loadAsync();
 requestPersistence();
 renderRanking();
@@ -2976,7 +3192,6 @@ rows.addEventListener("keydown", (e) => {
   destino.focus();
 });
 
-wireButton($("manualOpenBtn"), () => openDayEditor(dateKey(new Date())));
 wireButton($("goalBtn"), openGoalEditor);
 wireButton($("exportBtn"), exportData);
 wireButton($("importBtn"), () => $("importFile").click());
@@ -2998,6 +3213,12 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     session ? stopSession() : startSession();
   }
+  // P pausa o reanuda sin terminar la sesión.
+  if (e.key === "p" || e.key === "P") {
+    e.preventDefault();
+    if (!session) return;
+    sessionPausada() ? resumeSession() : pauseSession();
+  }
 });
 
 // otra pestaña ha guardado: nos ponemos al día sin recargar
@@ -3005,8 +3226,9 @@ window.addEventListener("storage", (e) => {
   if (e.key !== K.LOG && e.key !== K.SESSION) return;
   loadSync();
   render();
-  if (session && !tickHandle) startTicking();
-  if (!session) stopTicking();
+  // Una sesión en pausa no debe volver a correr sola.
+  if (session && !sessionPausada() && !tickHandle) startTicking();
+  if (!session || sessionPausada()) stopTicking();
 });
 
 // al volver a la app: recalcular, recuperar el bloqueo de pantalla y latir
@@ -3016,7 +3238,7 @@ document.addEventListener("visibilitychange", () => {
   checkRecovery();
   render();
   refrescarPresencia();
-  if (session) acquireWakeLock();
+  if (session && !sessionPausada()) { acquireWakeLock(); startTicking(); }
   // Latido inmediato al volver: si no, el grupo te vería desconectado
   // durante casi un minuto después de desbloquear el móvil.
   if (group && supaReady()) ciclo({});

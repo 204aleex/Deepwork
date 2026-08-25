@@ -427,6 +427,8 @@ begin
   -- rendija: si dos personas entran con el mismo apodo a la vez, las dos
   -- pasan la comprobación y la segunda reventaba con el error crudo de
   -- Postgres. Aquí se atrapa y sale el mismo mensaje de siempre.
+  perform pg_advisory_xact_lock(hashtextextended(v_group_id::text, 0));
+
   begin
     insert into dw_members (group_id, nickname, secret, last_seen, show_presence)
       values (v_group_id, v_nick, v_secret, now(), not coalesce(v_public, false))
@@ -464,6 +466,8 @@ begin
   if v_code is null then
     raise exception 'Ese grupo ya no está abierto' using errcode = 'DW003';
   end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(p_group_id::text, 0));
 
   begin
     insert into dw_members (group_id, nickname, secret, last_seen, show_presence)
@@ -561,6 +565,35 @@ begin
 end;
 $$;
 
+-- Cambiar el nombre del grupo. Sólo el dueño, con la misma credencial
+-- que ya autoriza a escribir minutos.
+create or replace function public.dw_rename_group(p_member uuid, p_secret text, p_name text)
+returns json
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $BODY$
+declare
+  v_group uuid;
+  v_name  text := trim(regexp_replace(coalesce(p_name, ''), '\s+', ' ', 'g'));
+begin
+  if length(v_name) < 2 or length(v_name) > 40 then
+    raise exception 'El nombre del grupo necesita entre 2 y 40 caracteres' using errcode = 'DW001';
+  end if;
+
+  select m.group_id into v_group
+    from dw_members m
+    join dw_groups g on g.id = m.group_id
+   where m.id = p_member and m.secret = p_secret and g.owner_id = m.id;
+  if v_group is null then
+    raise exception 'Sólo quien creó el grupo puede cambiarle el nombre' using errcode = 'DW006';
+  end if;
+
+  update dw_groups set name = v_name where id = v_group;
+  return json_build_object('ok', true, 'name', v_name);
+end;
+$BODY$;
+
 -- Publicar o no la propia conexión. El filtro vive en el SERVIDOR: si
 -- estuviera sólo en el cliente, apagar la presencia te dejaría además sin
 -- poder sincronizar minutos.
@@ -595,6 +628,11 @@ begin
   if v_group is null then
     raise exception 'Credenciales no válidas' using errcode = 'DW005';
   end if;
+
+  -- Se serializa por grupo: sin esto, alguien entrando en el mismo
+  -- instante en que sale el ultimo miembro podia perder su fila por la
+  -- cascada del borrado, o recibir un error crudo de clave ajena.
+  perform pg_advisory_xact_lock(hashtextextended(v_group::text, 0));
 
   delete from dw_members where id = p_member;
 
@@ -717,6 +755,7 @@ grant execute on function public.dw_join_public(uuid, text)                to an
 grant execute on function public.dw_sync(uuid, text, jsonb, int, boolean, date) to anon, authenticated;
 grant execute on function public.dw_public_groups(text, int)               to anon, authenticated;
 grant execute on function public.dw_set_public(uuid, text, boolean)        to anon, authenticated;
+grant execute on function public.dw_rename_group(uuid, text, text)        to anon, authenticated;
 grant execute on function public.dw_set_presence(uuid, text, boolean)      to anon, authenticated;
 grant execute on function public.dw_leave(uuid, text)                      to anon, authenticated;
 grant execute on function public.dw_leaderboard(text, date)                to anon, authenticated;
