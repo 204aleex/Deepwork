@@ -882,13 +882,13 @@
       <div class="legend-row">
         <div class="hover-info" id="hoverInfo">&nbsp;</div>
         <div class="legend">
-          <span class="legend-label">Menos</span>
+          <span class="legend-label">Nada</span>
           <div class="legend-swatch" style="background:var(--l0)"></div>
           <div class="legend-swatch" style="background:var(--l1)"></div>
           <div class="legend-swatch" style="background:var(--l2)"></div>
           <div class="legend-swatch" style="background:var(--l3)"></div>
           <div class="legend-swatch" style="background:var(--l4)"></div>
-          <span class="legend-label">Más</span>
+          <span class="legend-label" id="legendGoal">Objetivo</span>
         </div>
       </div>
 
@@ -985,12 +985,22 @@ function fmtClock(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
   return pad(Math.floor(s / 3600)) + ":" + pad(Math.floor((s % 3600) / 60)) + ":" + pad(s % 60);
 }
+/* El color de cada día se mide contra TU objetivo, no contra unos
+   umbrales fijos. Antes eran 30 / 90 / 180 minutos a pelo: con un
+   objetivo de 2 h, media hora ya pintaba el segundo nivel y el día
+   parecía mucho mejor de lo que fue.
+
+   Ahora el tono más vivo es exactamente cumplir el objetivo, y por
+   debajo va bajando por cuartos. Cambiar el objetivo recolorea la
+   rejilla entera, que es lo que hace que la escala signifique algo. */
 function levelFor(mins) {
   if (!mins || mins <= 0) return 0;
-  if (mins < 30) return 1;
-  if (mins < 90) return 2;
-  if (mins < 180) return 3;
-  return 4;
+  const objetivo = Math.max(1, prefs.goal || 120);
+  const parte = mins / objetivo;
+  if (parte >= 1)   return 4;   // objetivo cumplido
+  if (parte >= 0.6) return 3;
+  if (parte >= 0.3) return 2;
+  return 1;
 }
 function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
@@ -1622,7 +1632,9 @@ function openGoalEditor() {
         prefs.goal = read();
         savePrefs();
         close();
-        updateGoal();
+        // render() y no updateGoal(): al cambiar el objetivo cambia la
+        // escala de color, así que hay que repintar la rejilla entera.
+        render();
         toast("Objetivo: " + fmtMinutes(prefs.goal) + " al día");
       });
     }
@@ -1913,8 +1925,11 @@ function showTip(cell) {
   const date = keyToDate(key);
   const mins = minutesForDay(key);
   const tip = $("tip");
-  tip.innerHTML = "<b>" + fmtMinutes(mins) + "</b> <small>· " +
-    date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" }) + "</small>";
+  const objetivo = Math.max(1, prefs.goal || 120);
+  const parte = Math.round((mins / objetivo) * 100);
+  tip.innerHTML = "<b>" + fmtMinutes(mins) + "</b>" +
+    (mins > 0 ? ' <small>· ' + parte + "% del objetivo</small>" : "") +
+    ' <small>· ' + date.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "short" }) + "</small>";
   const rect = cell.getBoundingClientRect();
 
   // Se mide una vez visible para poder encajarlo dentro de la pantalla:
