@@ -36,8 +36,50 @@ Para activarlo:
    pública (*anon* / *publishable*), y ponlas en `config.js`.
 
 Luego, desde la app: **Crear un grupo** te da un código de 6 letras. Quien
-lo tenga entra con **Tengo un código** y elige un apodo. El ranking se
-puede ordenar por hoy, por semana o por total.
+lo tenga entra con **Tengo un código** y elige un apodo. También hay
+grupos abiertos, a los que se entra sin código desde el chip de grupo.
+
+## Entrar con Google (recomendado)
+
+Sin cuenta, quién eres dentro de un grupo se guarda **sólo en el
+dispositivo**. Cuando el navegador borra sus datos —cosa que iOS y Android
+hacen con las PWA que llevan días sin abrirse— la app se queda sin grupo,
+vuelves a entrar y **apareces duplicado**: la fila vieja se queda con tus
+horas. Con la cuenta la identidad la pone el servidor, así que es la misma
+en todos tus dispositivos y no puede duplicarse.
+
+Para activarlo:
+
+1. En **Google Cloud Console** → *APIs y servicios* → *Credenciales*, crea
+   un **ID de cliente de OAuth** de tipo *Aplicación web*.
+   - En *URI de redireccionamiento autorizados* pon exactamente:
+     `https://TU-PROYECTO.supabase.co/auth/v1/callback`
+     (lo tienes tal cual en el paso 2, Supabase te lo enseña).
+2. En **Supabase** → *Authentication* → *Sign In / Providers* → **Google**:
+   actívalo y pega el *Client ID* y el *Client Secret* de Google.
+3. En **Supabase** → *Authentication* → *URL Configuration*:
+   - *Site URL*: la dirección de tu app (por ejemplo
+     `https://204aleex.github.io/Deepwork/`).
+   - En *Redirect URLs* añade esa misma dirección.
+
+Con eso, el botón **Entrar** de la app ya funciona. Al iniciar sesión:
+
+- Tu grupo se recupera solo en cualquier dispositivo, sin volver a entrar.
+- Volver a entrar en un grupo con otro apodo **te cambia el nombre**, no
+  crea un segundo tú.
+- Si ya estabas en un grupo sin cuenta, tu fila de siempre se engancha a
+  la cuenta en la primera sincronización. No pierdes el historial ni hay
+  que volver a entrar.
+
+La app sigue funcionando sin cuenta: el cronómetro y el registro diario son
+locales y no la necesitan para nada.
+
+## Limpiar duplicados antiguos
+
+Si arrastras filas duplicadas de antes de las cuentas, quien creó el grupo
+puede quitarlas desde **Ajustes → Quitar a alguien**. Se borra esa fila y
+sus horas de ese grupo; el registro en el dispositivo de esa persona no se
+toca.
 
 ### Cómo está protegido
 

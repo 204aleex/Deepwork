@@ -117,7 +117,23 @@
   /* ---------- barra superior ---------- */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; padding: 0 4px 2px;
+    gap: 10px; padding: 0 4px 2px;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .acct-chip {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--line-2);
+    border-radius: 99px; padding: 7px 12px; min-height: 36px;
+    color: var(--muted); font-family: inherit; font-size: 12.5px; font-weight: 600;
+    cursor: pointer; flex-shrink: 0; touch-action: manipulation;
+    transition: transform .18s var(--spring), border-color .2s, color .2s;
+  }
+  .acct-chip:active { transform: scale(.96); }
+  .acct-chip.dentro { color: var(--text); border-color: rgba(91,124,255,.35); }
+  .acct-chip .avatar {
+    width: 20px; height: 20px; border-radius: 99px; flex-shrink: 0;
+    display: grid; place-items: center;
+    background: var(--accent-deep); color: #fff; font-size: 11px; font-weight: 700;
   }
   .brand { font-size: 11px; letter-spacing: .16em; color: var(--accent); font-weight: 700; }
   .group-chip {
@@ -782,7 +798,10 @@
 
   <header class="topbar">
     <div class="brand">DEEP WORK</div>
-    <button class="group-chip" id="groupChip" aria-label="Grupo">Buscar grupo</button>
+    <div class="topbar-right">
+      <button class="acct-chip" id="acctChip" aria-label="Cuenta">Entrar</button>
+      <button class="group-chip" id="groupChip" aria-label="Grupo">Buscar grupo</button>
+    </div>
   </header>
 
   <div id="noticeSlot"></div>
@@ -902,6 +921,7 @@ const K = {
   GROUP:   "deepwork:group:v1",
   PENDING_LEAVE: "deepwork:leave-pendiente:v1",
   ULTIMO_CICLO:  "deepwork:ultimo-ciclo",
+  CUENTA:  "deepwork:cuenta:v1",
   OLD_LOG: "deepwork-log",
   OLD_SES: "deepwork-active-session"
 };
@@ -1922,6 +1942,126 @@ function hideTip() {
 
 const SUPA = window.DEEPWORK_CONFIG || {};
 const supaReady = () => !!(SUPA.SUPABASE_URL && SUPA.SUPABASE_KEY);
+const supaBase = () => String(SUPA.SUPABASE_URL || "").replace(/\/+$/, "");
+
+/* =====================================================================
+   Cuenta de Google
+   ---------------------------------------------------------------------
+   Sin librería: el flujo de Supabase es una redirección de ida y vuelta.
+   Se va a /auth/v1/authorize, Google pregunta, y Supabase devuelve aquí
+   con los tokens en el trozo de la URL que va detrás de la almohadilla.
+
+   Por qué importa: hasta ahora tu identidad en un grupo vivía sólo en el
+   localStorage del móvil. Cuando el navegador lo borraba (iOS y Android
+   lo hacen con las PWA que llevan días sin abrirse) la app se quedaba sin
+   grupo, volvías a entrar y nacía una fila nueva mientras la vieja se
+   quedaba con tus horas. Con la cuenta, la identidad la pone el servidor
+   y es la misma en todos tus dispositivos.
+   ===================================================================== */
+
+let cuenta = readJSON(K.CUENTA);          // { access_token, refresh_token, expira, email }
+let refrescando = null;
+
+function sesionIniciada() { return !!(cuenta && cuenta.refresh_token); }
+
+function leerJwt(token) {
+  try {
+    const cuerpo = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(decodeURIComponent(escape(atob(cuerpo))));
+  } catch (e) { return {}; }
+}
+
+function guardarCuenta(datos) {
+  if (!datos || !datos.access_token) { cuenta = null; localStorage.removeItem(K.CUENTA); return; }
+  const claims = leerJwt(datos.access_token);
+  cuenta = {
+    access_token: datos.access_token,
+    refresh_token: datos.refresh_token,
+    // Se resta un minuto de margen: mejor refrescar de más que que caduque
+    // en mitad de una petición.
+    expira: Date.now() + (Number(datos.expires_in || 3600) - 60) * 1000,
+    email: claims.email || (claims.user_metadata && claims.user_metadata.email) || "",
+    nombre: (claims.user_metadata && (claims.user_metadata.full_name || claims.user_metadata.name)) || ""
+  };
+  writeJSON(K.CUENTA, cuenta);
+}
+
+function entrarConGoogle() {
+  if (!supaReady()) { toast("Falta configurar Supabase", true); return; }
+  // Se vuelve exactamente a esta página, sin parámetros ni almohadilla.
+  const vuelta = location.origin + location.pathname;
+  location.href = supaBase() + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(vuelta);
+}
+
+async function salirDeLaCuenta() {
+  const token = cuenta && cuenta.access_token;
+  guardarCuenta(null);
+  // El grupo se conserva en local: la sesión de la cuenta y la pertenencia
+  // al grupo son cosas distintas.
+  renderRanking();
+  if (token) {
+    try {
+      await fetch(supaBase() + "/auth/v1/logout", {
+        method: "POST",
+        headers: { apikey: SUPA.SUPABASE_KEY, Authorization: "Bearer " + token }
+      });
+    } catch (e) { /* da igual: en local ya está fuera */ }
+  }
+  toast("Sesión cerrada");
+}
+
+/* Recoge los tokens que Supabase deja en la URL al volver de Google. */
+function recogerVuelta() {
+  if (!location.hash || location.hash.indexOf("access_token") < 0) {
+    // Google puede devolver también un error
+    if (location.hash && location.hash.indexOf("error") >= 0) {
+      const p = new URLSearchParams(location.hash.slice(1));
+      const msg = p.get("error_description") || p.get("error");
+      history.replaceState(null, "", location.origin + location.pathname);
+      if (msg) setTimeout(() => toast(decodeURIComponent(msg.replace(/\+/g, " ")), true), 400);
+    }
+    return false;
+  }
+  const p = new URLSearchParams(location.hash.slice(1));
+  guardarCuenta({
+    access_token: p.get("access_token"),
+    refresh_token: p.get("refresh_token"),
+    expires_in: p.get("expires_in")
+  });
+  // La almohadilla se limpia para que los tokens no se queden en la barra
+  // de direcciones ni en el historial.
+  history.replaceState(null, "", location.origin + location.pathname);
+  return true;
+}
+
+async function tokenValido() {
+  if (!sesionIniciada()) return null;
+  if (Date.now() < cuenta.expira) return cuenta.access_token;
+  if (refrescando) return refrescando;
+
+  refrescando = (async () => {
+    try {
+      const r = await fetch(supaBase() + "/auth/v1/token?grant_type=refresh_token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPA.SUPABASE_KEY },
+        body: JSON.stringify({ refresh_token: cuenta.refresh_token })
+      });
+      const d = await r.json();
+      if (!r.ok || !d.access_token) throw new Error("refresco rechazado");
+      guardarCuenta(d);
+      return cuenta.access_token;
+    } catch (e) {
+      // El refresco caducado deja la cuenta fuera, pero NO toca el grupo:
+      // se sigue funcionando con las credenciales del dispositivo.
+      guardarCuenta(null);
+      renderRanking();
+      return null;
+    } finally {
+      refrescando = null;
+    }
+  })();
+  return refrescando;
+}
 
 /* Parámetros de presencia. Los umbrales del servidor y los de aquí tienen
    que moverse juntos: si el servidor descartara la sesión antes que el
@@ -1964,7 +2104,10 @@ let filtroGente = "";
 const RPC_TIMEOUT = 12000;
 
 async function rpc(fn, args, opciones) {
-  const base = String(SUPA.SUPABASE_URL).replace(/\/+$/, "");
+  const base = supaBase();
+  // Con la sesión iniciada, la petición va firmada por la cuenta: es lo
+  // que hace que auth.uid() valga algo dentro de las funciones.
+  const token = await tokenValido();
   // Con una red que acepta la conexión y luego no contesta (típico de un
   // wifi de bar), fetch se queda esperando indefinidamente.
   const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
@@ -1977,7 +2120,7 @@ async function rpc(fn, args, opciones) {
       headers: {
         "Content-Type": "application/json",
         apikey: SUPA.SUPABASE_KEY,
-        Authorization: "Bearer " + SUPA.SUPABASE_KEY
+        Authorization: "Bearer " + (token || SUPA.SUPABASE_KEY)
       },
       body: JSON.stringify(args),
       signal: ctrl ? ctrl.signal : undefined,
@@ -2001,6 +2144,48 @@ async function rpc(fn, args, opciones) {
 function saveGroup() {
   if (group) writeJSON(K.GROUP, group);
   else localStorage.removeItem(K.GROUP);
+  // Espejo en IndexedDB, igual que el registro de días. El localStorage es
+  // lo primero que el navegador tira cuando hace limpieza, y perder estas
+  // credenciales era justo lo que obligaba a volver a entrar en el grupo.
+  idbSet("group", group || null);
+}
+
+/* Recupera la pertenencia por el orden más fiable primero: la cuenta
+   (vale en cualquier dispositivo), luego el espejo local. */
+async function recuperarGrupo() {
+  if (!supaReady()) return;
+
+  if (!group) {
+    const espejo = await idbGet("group");
+    if (espejo && espejo.memberId) { group = espejo; saveGroup(); renderRanking(); }
+  }
+
+  if (!sesionIniciada()) return;
+  try {
+    const r = await rpc("dw_my_membership", {});
+    const lista = (r && r.memberships) || [];
+    if (!lista.length) return;
+    // Si ya hay grupo local y sigue estando entre los de la cuenta, se
+    // conserva ese; si no, se coge el más reciente.
+    const actual = group && lista.find((m) => m.group_id === group.groupId);
+    const elegido = actual || lista[0];
+    const nuevo = {
+      code: elegido.code, name: elegido.name, groupId: elegido.group_id,
+      memberId: elegido.member_id, secret: elegido.secret, nickname: elegido.nickname,
+      isPublic: !!elegido.is_public, isOwner: !!elegido.is_owner,
+      showPresence: elegido.show_presence !== false
+    };
+    const cambia = !group || group.memberId !== nuevo.memberId;
+    group = nuevo;
+    saveGroup();
+    if (cambia) {
+      prefs.nickname = nuevo.nickname;
+      savePrefs();
+      marcarSucio();
+      renderRanking();
+      toast("Grupo recuperado: " + nuevo.name);
+    }
+  } catch (e) { /* sin conexión se sigue con lo local */ }
 }
 
 /* Van también los días a cero: dw_sync hace upsert, así que si se
@@ -2524,6 +2709,7 @@ function refrescarPresencia() {
 }
 
 function renderGroupChip() {
+  renderCuentaChip();
   const chip = $("groupChip");
   if (!supaReady()) { chip.style.display = "none"; return; }
   chip.style.display = "";
@@ -2822,6 +3008,114 @@ async function entrarEnGrupo(data) {
   await ciclo({ forzar: true, conDias: true });
 }
 
+/* Quitar a alguien del grupo. Es lo que permite limpiar los duplicados
+   que dejó la identidad por dispositivo: la fila vieja, la que se quedó
+   con tus horas cuando el móvil borró sus datos, se echa desde aquí. */
+function openQuitarMiembro() {
+  const otros = (board || []).filter((m) => !group || m.member_id !== group.memberId);
+
+  if (!otros.length) {
+    toast("No hay nadie más en el grupo");
+    return;
+  }
+
+  openModal(
+    "<h2>Quitar a alguien</h2>" +
+    '<div class="sub">Se borra su fila y sus horas de este grupo. Su registro ' +
+      "en su propio dispositivo no se toca.</div>" +
+    '<div class="people" id="kickList">' + otros.map((m) => {
+      const total = fmtMinutes(m.total || 0);
+      return '<div class="person">' +
+        '<span class="mono" aria-hidden="true" style="background:' + tonoDe(m.nickname) + '">' +
+          escapeHtml(inicialDe(m.nickname)) + "</span>" +
+        '<div class="person-who">' +
+          '<div class="person-name">' + escapeHtml(m.nickname) + "</div>" +
+          '<div class="person-sub">' + total + " en total</div>" +
+        "</div>" +
+        '<button class="link-btn" data-echar="' + escapeHtml(m.member_id) + '" ' +
+          'data-nombre="' + escapeHtml(m.nickname) + '">Quitar</button>' +
+      "</div>";
+    }).join("") + "</div>" +
+    '<div class="modal-actions" style="margin-top:16px">' +
+      '<button class="btn btn-ghost" id="kCerrar">Cerrar</button>' +
+    "</div>",
+    (cerrar) => {
+      wireButton($("kCerrar"), cerrar);
+      document.querySelectorAll("[data-echar]").forEach((btn) => {
+        wireButton(btn, async () => {
+          if (btn.disabled) return;
+          const nombre = btn.dataset.nombre;
+          busy(btn, true, "Quitar");
+          try {
+            await rpc("dw_kick", {
+              p_member: group.memberId, p_secret: group.secret, p_target: btn.dataset.echar
+            });
+            btn.closest(".person").remove();
+            board = (board || []).filter((m) => m.member_id !== btn.dataset.echar);
+            renderRanking();
+            toast(nombre + " fuera del grupo");
+            if (!document.querySelectorAll("[data-echar]").length) cerrar();
+          } catch (e) {
+            busy(btn, false, "Quitar");
+            showModalError(e.message);
+          }
+        });
+      });
+    }
+  );
+}
+
+function openCuenta() {
+  const dentro = sesionIniciada();
+  openModal(
+    "<h2>" + (dentro ? "Tu cuenta" : "Entrar con Google") + "</h2>" +
+    '<div class="sub">' + (dentro
+      ? escapeHtml(cuenta.email || cuenta.nombre || "sesión iniciada")
+      : "Para llevar tu grupo a todos tus dispositivos") + "</div>" +
+    (dentro
+      ? '<div class="switch-text" style="margin-bottom:18px"><span>' +
+        "Tu grupo y tus horas van con la cuenta, así que puedes abrir la app " +
+        "en el móvil y en el ordenador y ver lo mismo. El registro diario " +
+        "sigue guardándose también en este dispositivo.</span></div>" +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-ghost" id="cCerrar">Cerrar sesión</button>' +
+          '<button class="btn btn-primary" id="cVale">Vale</button>' +
+        "</div>"
+      : '<div class="switch-text" style="margin-bottom:18px"><span>' +
+        "Sin cuenta, quién eres dentro de un grupo se guarda sólo en este " +
+        "dispositivo. Si el navegador borra sus datos —cosa que iOS y " +
+        "Android hacen con las apps que llevan días sin abrirse— tienes que " +
+        "volver a entrar y apareces duplicado.<br><br>" +
+        "Con la cuenta eso no pasa: entras desde donde quieras y sigues " +
+        "siendo el mismo.</span></div>" +
+        '<div class="modal-actions">' +
+          '<button class="btn btn-ghost" id="cVale">Ahora no</button>' +
+          '<button class="btn btn-primary" id="cEntrar">Entrar con Google</button>' +
+        "</div>"),
+    (cerrar) => {
+      wireButton($("cVale"), cerrar);
+      if (dentro) wireButton($("cCerrar"), () => { cerrar(); salirDeLaCuenta(); });
+      else wireButton($("cEntrar"), entrarConGoogle);
+    }
+  );
+}
+
+function renderCuentaChip() {
+  const chip = $("acctChip");
+  if (!supaReady()) { chip.style.display = "none"; return; }
+  chip.style.display = "";
+  if (sesionIniciada()) {
+    const quien = cuenta.email || cuenta.nombre || "?";
+    chip.className = "acct-chip dentro";
+    chip.innerHTML = '<span class="avatar">' + escapeHtml(quien.trim()[0].toUpperCase()) + "</span>";
+    chip.setAttribute("aria-label", "Cuenta: " + quien);
+  } else {
+    chip.className = "acct-chip";
+    chip.textContent = "Entrar";
+    chip.setAttribute("aria-label", "Entrar con Google");
+  }
+}
+
 function openGroupSettings() {
   const publico = !!group.isPublic;
   const dueno = !!group.isOwner;
@@ -2858,12 +3152,14 @@ function openGroupSettings() {
     "</div>" +
     '<div class="rank-cta">' +
       '<button class="link-btn" id="sCode">Copiar código</button>' +
+      (dueno ? '<button class="link-btn" id="sKick">Quitar a alguien</button>' : "") +
       '<button class="link-btn" id="sLeave">Salir del grupo</button>' +
     "</div>",
     (cerrar) => {
       wireButton($("sCode"), copyCode);
       wireButton($("sCancel"), cerrar);
       wireButton($("sLeave"), () => { cerrar(); openLeave(); });
+      if (dueno) wireButton($("sKick"), () => { cerrar(); openQuitarMiembro(); });
 
       const guardar = async () => {
         const button = $("sSave");
@@ -3127,12 +3423,20 @@ fold.addEventListener("toggle", () => {
   if (fold.open) { const w = $("gridWrap"); w.scrollLeft = w.scrollWidth; }
 });
 
-if (group && supaReady()) { flushPendingLeaves(); ciclo({ forzar: true, conDias: true }); }
+if (group && supaReady()) flushPendingLeaves();
 arrancarVigilante();
 arrancarRepintador();
 programarLatido();
 
 wireButton($("groupChip"), openGrupos);
+wireButton($("acctChip"), openCuenta);
+
+// Si venimos de Google, se recogen los tokens antes de nada.
+if (recogerVuelta()) {
+  renderRanking();
+  toast("Sesión iniciada");
+}
+recuperarGrupo().then(() => { if (group && supaReady()) ciclo({ forzar: true, conDias: true }); });
 
 // scroll al final para que hoy quede a la vista en móvil
 const wrap = $("gridWrap");

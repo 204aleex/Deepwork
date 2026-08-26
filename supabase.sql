@@ -1,7 +1,11 @@
 -- =====================================================================
---  Deep Work · grupos, ranking y presencia
+--  Deep Work · grupos, ranking, presencia y cuentas
 --  Pegar entero en Supabase → SQL Editor → New query → Run.
 --  Se puede volver a ejecutar sin miedo: no borra datos.
+--
+--  ESTE ES EL ÚNICO FICHERO QUE HAY QUE EJECUTAR. Contiene el esquema
+--  completo y es idempotente: da igual cuántas veces se pegue.
+--  (limpieza.sql es aparte y opcional: es lo único que borra algo.)
 --
 --  IMPORTANTE, dos cosas:
 --   1. NO añadas begin; ... commit; a mano. El editor de Supabase ya
@@ -71,7 +75,19 @@ alter table public.dw_groups
 alter table public.dw_members
   add column if not exists last_seen           timestamptz,
   add column if not exists session_started_at  timestamptz,
-  add column if not exists show_presence       boolean not null default true;
+  add column if not exists show_presence       boolean not null default true,
+  add column if not exists user_id             uuid;
+
+-- Una sola fila por cuenta y grupo. Este índice es lo que IMPIDE los
+-- duplicados de raíz: antes la identidad vivía en el localStorage del
+-- móvil, y cuando el navegador lo borraba (iOS y Android lo hacen con las
+-- PWA que llevan días sin abrirse) volvías a entrar y nacía una fila nueva
+-- mientras la vieja se quedaba con tus horas.
+create unique index if not exists dw_members_user_idx
+  on public.dw_members (group_id, user_id) where user_id is not null;
+
+create index if not exists dw_members_user_lookup
+  on public.dw_members (user_id) where user_id is not null;
 
 -- El latido reescribe last_seen y session_started_at cada 45 segundos.
 -- Deliberadamente NO se indexan esas columnas: la tabla tiene decenas de
@@ -303,6 +319,18 @@ begin
   -- Latido. Llegan SEGUNDOS transcurridos, nunca fechas: el instante de
   -- inicio lo reconstruye el servidor con su propio reloj. Una sesión de
   -- más de 6 horas no me la creo y se guarda como si no hubiera ninguna.
+  -- Enganche silencioso: la primera vez que sincronizas con la sesión
+  -- iniciada, tu fila de siempre queda ligada a la cuenta. Nadie tiene que
+  -- volver a entrar en su grupo ni pierde su historial.
+  if auth.uid() is not null then
+    begin
+      update dw_members set user_id = auth.uid()
+       where id = p_member and user_id is null;
+    exception when unique_violation then
+      null;   -- ya había otra fila de esta cuenta en ese grupo
+    end;
+  end if;
+
   update dw_members
      set last_seen  = now(),
          updated_at = now(),
@@ -385,8 +413,8 @@ begin
   -- hace 3 minutos" entre cinco amigos es un dato simpático; entre
   -- desconocidos es el registro de horarios de una persona. Los minutos
   -- siguen contando en el ranking igual: se compite sin publicar horario.
-  insert into dw_members (group_id, nickname, secret, last_seen, show_presence)
-    values (v_group_id, v_nick, v_secret, now(), not v_public)
+  insert into dw_members (group_id, nickname, secret, last_seen, show_presence, user_id)
+    values (v_group_id, v_nick, v_secret, now(), not v_public, auth.uid())
     returning id into v_member;
 
   update dw_groups set owner_id = v_member where id = v_group_id;
@@ -415,6 +443,8 @@ declare
   v_name     text;
   v_public   boolean;
   v_member   uuid;
+  v_show     boolean;
+  v_uid      uuid := auth.uid();
   v_secret   text := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 begin
   select id, name, is_public into v_group_id, v_name, v_public
@@ -429,9 +459,31 @@ begin
   -- Postgres. Aquí se atrapa y sale el mismo mensaje de siempre.
   perform pg_advisory_xact_lock(hashtextextended(v_group_id::text, 0));
 
+  -- Si esta cuenta ya estaba en el grupo se REUTILIZA su fila en vez de
+  -- crear otra: volver a entrar con otro apodo te cambia el nombre, no
+  -- crea un segundo tú.
+  if v_uid is not null then
+    select id, secret, show_presence into v_member, v_secret, v_show
+      from dw_members where group_id = v_group_id and user_id = v_uid;
+    if v_member is not null then
+      begin
+        update dw_members set nickname = v_nick, last_seen = now() where id = v_member;
+      exception when unique_violation then
+        raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
+      end;
+      return json_build_object(
+        'code', v_code, 'name', v_name, 'group_id', v_group_id,
+        'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
+        'is_public', coalesce(v_public, false),
+        'is_owner', (select g.owner_id = v_member from dw_groups g where g.id = v_group_id),
+        'show_presence', v_show, 'reused', true
+      );
+    end if;
+  end if;
+
   begin
-    insert into dw_members (group_id, nickname, secret, last_seen, show_presence)
-      values (v_group_id, v_nick, v_secret, now(), not coalesce(v_public, false))
+    insert into dw_members (group_id, nickname, secret, last_seen, show_presence, user_id)
+      values (v_group_id, v_nick, v_secret, now(), not coalesce(v_public, false), v_uid)
       returning id into v_member;
   exception when unique_violation then
     raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
@@ -441,7 +493,7 @@ begin
     'code', v_code, 'name', v_name, 'group_id', v_group_id,
     'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
     'is_public', coalesce(v_public, false), 'is_owner', false,
-    'show_presence', not coalesce(v_public, false)
+    'show_presence', not coalesce(v_public, false), 'reused', false
   );
 end;
 $$;
@@ -459,6 +511,8 @@ declare
   v_code   text;
   v_name   text;
   v_member uuid;
+  v_show   boolean;
+  v_uid    uuid := auth.uid();
   v_secret text := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 begin
   select code, name into v_code, v_name
@@ -469,9 +523,28 @@ begin
 
   perform pg_advisory_xact_lock(hashtextextended(p_group_id::text, 0));
 
+  if v_uid is not null then
+    select id, secret, show_presence into v_member, v_secret, v_show
+      from dw_members where group_id = p_group_id and user_id = v_uid;
+    if v_member is not null then
+      begin
+        update dw_members set nickname = v_nick, last_seen = now() where id = v_member;
+      exception when unique_violation then
+        raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
+      end;
+      return json_build_object(
+        'code', v_code, 'name', v_name, 'group_id', p_group_id,
+        'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
+        'is_public', true,
+        'is_owner', (select g.owner_id = v_member from dw_groups g where g.id = p_group_id),
+        'show_presence', v_show, 'reused', true
+      );
+    end if;
+  end if;
+
   begin
-    insert into dw_members (group_id, nickname, secret, last_seen, show_presence)
-      values (p_group_id, v_nick, v_secret, now(), false)
+    insert into dw_members (group_id, nickname, secret, last_seen, show_presence, user_id)
+      values (p_group_id, v_nick, v_secret, now(), false, v_uid)
       returning id into v_member;
   exception when unique_violation then
     raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
@@ -480,7 +553,7 @@ begin
   return json_build_object(
     'code', v_code, 'name', v_name, 'group_id', p_group_id,
     'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
-    'is_public', true, 'is_owner', false, 'show_presence', false
+    'is_public', true, 'is_owner', false, 'show_presence', false, 'reused', false
   );
 end;
 $$;
@@ -663,6 +736,85 @@ end;
 $$;
 
 
+-- ==================================================== cuenta y limpieza
+
+-- Devuelve la pertenencia de la cuenta que llama, con sus credenciales.
+-- Es lo que permite abrir la app en otro móvil, o después de que el
+-- navegador haya borrado sus datos, y recuperar el grupo sin volver a
+-- entrar y sin crear una fila nueva.
+create or replace function public.dw_my_membership()
+returns json
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $BODY$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    return json_build_object('signed_in', false, 'memberships', '[]'::json);
+  end if;
+
+  return json_build_object(
+    'signed_in', true,
+    'memberships', coalesce((
+      select json_agg(json_build_object(
+        'group_id',      g.id,
+        'code',          g.code,
+        'name',          g.name,
+        'is_public',     g.is_public,
+        'is_owner',      (g.owner_id = m.id),
+        'member_id',     m.id,
+        'secret',        m.secret,
+        'nickname',      m.nickname,
+        'show_presence', m.show_presence
+      ) order by m.updated_at desc)
+      from dw_members m
+      join dw_groups g on g.id = m.group_id
+      where m.user_id = v_uid
+    ), '[]'::json)
+  );
+end;
+$BODY$;
+
+
+-- Echar a alguien del grupo. Sólo el dueño, y no puede echarse a sí mismo
+-- (para eso está salir del grupo). Sirve para limpiar los duplicados que
+-- dejó la identidad por dispositivo antes de que existieran las cuentas.
+create or replace function public.dw_kick(p_member uuid, p_secret text, p_target uuid)
+returns json
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $BODY$
+declare
+  v_group uuid;
+  v_nick  text;
+begin
+  select m.group_id into v_group
+    from dw_members m
+    join dw_groups g on g.id = m.group_id
+   where m.id = p_member and m.secret = p_secret and g.owner_id = m.id;
+  if v_group is null then
+    raise exception 'Sólo quien creó el grupo puede echar a alguien' using errcode = 'DW006';
+  end if;
+
+  if p_target = p_member then
+    raise exception 'No puedes echarte a ti mismo: usa salir del grupo' using errcode = 'DW007';
+  end if;
+
+  select nickname into v_nick from dw_members
+   where id = p_target and group_id = v_group;
+  if v_nick is null then
+    raise exception 'Esa persona ya no está en el grupo' using errcode = 'DW008';
+  end if;
+
+  delete from dw_members where id = p_target and group_id = v_group;
+  return json_build_object('ok', true, 'nickname', v_nick);
+end;
+$BODY$;
+
+
 -- ================================================ compatibilidad y aseo
 
 -- Se conserva para los clientes que aún no hablen dw_sync: el service
@@ -758,6 +910,8 @@ grant execute on function public.dw_set_public(uuid, text, boolean)        to an
 grant execute on function public.dw_rename_group(uuid, text, text)        to anon, authenticated;
 grant execute on function public.dw_set_presence(uuid, text, boolean)      to anon, authenticated;
 grant execute on function public.dw_leave(uuid, text)                      to anon, authenticated;
+grant execute on function public.dw_my_membership()                        to anon, authenticated;
+grant execute on function public.dw_kick(uuid, text, uuid)                 to anon, authenticated;
 grant execute on function public.dw_leaderboard(text, date)                to anon, authenticated;
 grant execute on function public.dw_push(uuid, text, jsonb, text)          to anon, authenticated;
 
