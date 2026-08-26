@@ -17,7 +17,7 @@ select
   g.code                                    as codigo,
   m.nickname                                as apodo,
   (g.owner_id = m.id)                       as es_el_dueno,
-  round(coalesce(sum(d.minutes), 0) / 60.0, 1) as horas,
+  round((coalesce(sum(d.minutes), 0) / 60.0)::numeric, 1) as horas,
   m.last_seen                               as ultima_conexion,
   m.id                                      as member_id
 from public.dw_groups g
