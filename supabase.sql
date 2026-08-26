@@ -457,7 +457,7 @@ begin
   -- rendija: si dos personas entran con el mismo apodo a la vez, las dos
   -- pasan la comprobación y la segunda reventaba con el error crudo de
   -- Postgres. Aquí se atrapa y sale el mismo mensaje de siempre.
-  perform pg_advisory_xact_lock(hashtextextended(v_group_id::text, 0));
+  perform pg_advisory_xact_lock(hashtext(v_group_id::text));
 
   -- Si esta cuenta ya estaba en el grupo se REUTILIZA su fila en vez de
   -- crear otra: volver a entrar con otro apodo te cambia el nombre, no
@@ -521,7 +521,7 @@ begin
     raise exception 'Ese grupo ya no está abierto' using errcode = 'DW003';
   end if;
 
-  perform pg_advisory_xact_lock(hashtextextended(p_group_id::text, 0));
+  perform pg_advisory_xact_lock(hashtext(p_group_id::text));
 
   if v_uid is not null then
     select id, secret, show_presence into v_member, v_secret, v_show
@@ -705,7 +705,7 @@ begin
   -- Se serializa por grupo: sin esto, alguien entrando en el mismo
   -- instante en que sale el ultimo miembro podia perder su fila por la
   -- cascada del borrado, o recibir un error crudo de clave ajena.
-  perform pg_advisory_xact_lock(hashtextextended(v_group::text, 0));
+  perform pg_advisory_xact_lock(hashtext(v_group::text));
 
   delete from dw_members where id = p_member;
 
