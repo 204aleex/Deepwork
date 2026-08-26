@@ -62,6 +62,17 @@ Para activarlo:
      `https://204aleex.github.io/Deepwork/`).
    - En *Redirect URLs* añade esa misma dirección.
 
+## Entrar con el correo
+
+Además de Google, se puede entrar con el correo sin configurar nada más:
+la app pide un código de seis cifras a Supabase y tú lo escribes. Si tu
+plantilla de correo de Supabase manda un enlace en vez de un código,
+también vale: al pulsarlo se vuelve a la app ya dentro.
+
+Para que llegue el código en vez del enlace, en **Supabase →
+Authentication → Emails → Magic Link** añade `{{ .Token }}` a la
+plantilla. No es obligatorio.
+
 Con eso, el botón **Entrar** de la app ya funciona. Al iniciar sesión:
 
 - Tu grupo se recupera solo en cualquier dispositivo, sin volver a entrar.

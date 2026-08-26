@@ -231,6 +231,9 @@ as $$
     select
       m.id::text                                        as member_id,
       m.nickname,
+      -- Quien creo el grupo. Va en cada fila para que la tabla pueda
+      -- pintarle la corona sin una segunda peticion.
+      (m.id = (select g.owner_id from dw_groups g where g.id = p_group)) as is_owner,
       coalesce(d.total, 0)::real                        as total,
       coalesce(d.week,  0)::real                        as week,
       coalesce(d.today, 0)::real                        as today,

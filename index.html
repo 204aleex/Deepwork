@@ -640,6 +640,12 @@
     font-size: 14px; font-weight: 600;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
+  /* La corona del dueño del grupo. Lleva title y un texto sólo para
+     lectores de pantalla: un emoji suelto no dice nada a quien no lo ve. */
+  .corona {
+    font-size: 12px; margin-left: 5px; vertical-align: 1px;
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,.5));
+  }
   .person-name .you {
     font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--accent);
     margin-left: 6px; vertical-align: 1px;
@@ -741,6 +747,13 @@
   .skeleton { background: var(--l0); border-radius: 12px; height: 46px; margin-bottom: 2px; animation: blink 1.4s ease-in-out infinite; }
 
   .field-label { font-size: 11px; color: var(--dim); margin: 0 0 6px; }
+  .o-bien {
+    display: flex; align-items: center; gap: 10px;
+    margin: 4px 0 12px; color: var(--dim); font-size: 11px;
+  }
+  .o-bien::before, .o-bien::after {
+    content: ""; flex: 1; height: 1px; background: var(--line);
+  }
   .modal input.text { text-align: left; }
   .modal input.code {
     text-align: center; letter-spacing: .3em; text-transform: uppercase;
@@ -1986,6 +1999,35 @@ function guardarCuenta(datos) {
   writeJSON(K.CUENTA, cuenta);
 }
 
+/* Entrar con el correo. Supabase manda un mensaje que trae un código de
+   seis cifras y/o un enlace: valen los dos caminos. El código es mejor en
+   el móvil, porque no te saca de la app instalada. */
+async function pedirCodigo(email) {
+  const vuelta = location.origin + location.pathname;
+  const r = await fetch(supaBase() + "/auth/v1/otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPA.SUPABASE_KEY },
+    body: JSON.stringify({ email: email, create_user: true, options: { email_redirect_to: vuelta } })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.msg || d.error_description || d.message || "No se ha podido enviar el correo");
+  return true;
+}
+
+async function verificarCodigo(email, codigo) {
+  const r = await fetch(supaBase() + "/auth/v1/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SUPA.SUPABASE_KEY },
+    body: JSON.stringify({ type: "email", email: email, token: String(codigo).trim() })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.access_token) {
+    throw new Error(d.msg || d.error_description || d.message || "El código no es válido o ha caducado");
+  }
+  guardarCuenta(d);
+  return true;
+}
+
 function entrarConGoogle() {
   if (!supaReady()) { toast("Falta configurar Supabase", true); return; }
   // Se vuelve exactamente a esta página, sin parámetros ni almohadilla.
@@ -2476,6 +2518,14 @@ const METRICS = [
 
 /* Un tono estable por apodo para el monograma: el mismo nombre siempre
    sale del mismo color, así se reconoce a la gente de un vistazo. */
+/* Corona de quien creó el grupo. El servidor la marca por fila, así que
+   la ve todo el mundo, no sólo el dueño. */
+function corona(m) {
+  if (!m || !m.is_owner) return "";
+  return '<span class="corona" title="Creó el grupo" aria-hidden="true">👑</span>' +
+         '<span class="sr-only">, creó el grupo</span>';
+}
+
 function tonoDe(nombre) {
   let h = 0;
   for (let i = 0; i < nombre.length; i++) h = (h * 31 + nombre.charCodeAt(i)) % 360;
@@ -2640,7 +2690,8 @@ function renderGente(body, filas) {
       '<span class="dot-state ' + f.estado + '" aria-hidden="true"></span>' +
       '<span class="mono" aria-hidden="true" style="background:' + tonoDe(f.nickname) + '">' + escapeHtml(inicialDe(f.nickname)) + "</span>" +
       '<div class="person-who">' +
-        '<div class="person-name">' + nombre + (f.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
+        '<div class="person-name">' + nombre + corona(f.raw) +
+          (f.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
         '<div class="person-sub' + (viva ? " viva" : "") + '" data-presencia="' + escapeHtml(f.raw.member_id) + '">' +
           escapeHtml(textoPresencia(f.raw)) +
         "</div>" +
@@ -2682,7 +2733,8 @@ function renderTablaRanking(body, filas) {
       '<div class="bar" aria-hidden="true" style="width:' + width + '%"></div>' +
       '<div class="rank-pos' + (conMedalla ? " medal" : "") + '">' + puesto + "</div>" +
       '<div class="rank-who">' +
-        '<div class="rank-name">' + escapeHtml(r.nickname) + (r.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
+        '<div class="rank-name">' + escapeHtml(r.nickname) + corona(r.raw) +
+          (r.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
         (sub.length ? '<div class="rank-sub">' + sub.join(" · ") + "</div>" : "") +
       "</div>" +
       '<div class="rank-value">' + fmtMinutes(value) + "</div>" +
@@ -3029,7 +3081,7 @@ function openQuitarMiembro() {
         '<span class="mono" aria-hidden="true" style="background:' + tonoDe(m.nickname) + '">' +
           escapeHtml(inicialDe(m.nickname)) + "</span>" +
         '<div class="person-who">' +
-          '<div class="person-name">' + escapeHtml(m.nickname) + "</div>" +
+          '<div class="person-name">' + escapeHtml(m.nickname) + corona(m) + "</div>" +
           '<div class="person-sub">' + total + " en total</div>" +
         "</div>" +
         '<button class="link-btn" data-echar="' + escapeHtml(m.member_id) + '" ' +
@@ -3088,14 +3140,92 @@ function openCuenta() {
         "volver a entrar y apareces duplicado.<br><br>" +
         "Con la cuenta eso no pasa: entras desde donde quieras y sigues " +
         "siendo el mismo.</span></div>" +
+        '<div class="modal-actions" style="margin-bottom:10px">' +
+          '<button class="btn btn-primary" id="cEntrar" style="flex:1">Entrar con Google</button>' +
+        "</div>" +
+        '<div class="o-bien"><span>o con tu correo</span></div>' +
+        '<div class="fields">' +
+          '<div><input class="text" id="cEmail" type="email" inputmode="email" ' +
+            'autocomplete="email" placeholder="tucorreo@gmail.com" /></div>' +
+        "</div>" +
         '<div class="modal-actions">' +
           '<button class="btn btn-ghost" id="cVale">Ahora no</button>' +
-          '<button class="btn btn-primary" id="cEntrar">Entrar con Google</button>' +
+          '<button class="btn btn-primary" id="cCodigo">Enviarme un código</button>' +
         "</div>"),
     (cerrar) => {
       wireButton($("cVale"), cerrar);
-      if (dentro) wireButton($("cCerrar"), () => { cerrar(); salirDeLaCuenta(); });
-      else wireButton($("cEntrar"), entrarConGoogle);
+      if (dentro) { wireButton($("cCerrar"), () => { cerrar(); salirDeLaCuenta(); }); return; }
+      wireButton($("cEntrar"), entrarConGoogle);
+
+      const pedir = async () => {
+        const boton = $("cCodigo");
+        if (boton.disabled) return;
+        const email = $("cEmail").value.trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+          showModalError("Escribe un correo válido");
+          return;
+        }
+        busy(boton, true, "Enviarme un código");
+        try {
+          await pedirCodigo(email);
+          cerrar();
+          openCodigo(email);
+        } catch (e) {
+          busy(boton, false, "Enviarme un código");
+          showModalError(e.message);
+        }
+      };
+      $("cEmail").addEventListener("keydown", (e) => { if (e.key === "Enter") pedir(); });
+      wireButton($("cCodigo"), pedir);
+    }
+  );
+}
+
+function openCodigo(email) {
+  openModal(
+    "<h2>Mira tu correo</h2>" +
+    '<div class="sub">Te hemos escrito a ' + escapeHtml(email) + "</div>" +
+    '<div class="switch-text" style="margin-bottom:14px"><span>' +
+      "Escribe aquí el código de seis cifras. Si el mensaje trae un enlace " +
+      "en vez de un código, también vale: púlsalo y vuelves ya dentro." +
+    "</span></div>" +
+    '<div class="fields">' +
+      '<div><input class="code" id="cToken" inputmode="numeric" autocomplete="one-time-code" ' +
+        'maxlength="8" placeholder="000000" /></div>' +
+    "</div>" +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="tOtro">Otro correo</button>' +
+      '<button class="btn btn-primary" id="tEntrar">Entrar</button>' +
+    "</div>" +
+    '<div class="rank-cta"><button class="link-btn" id="tReenviar">Enviar otro código</button></div>',
+    (cerrar) => {
+      const campo = $("cToken");
+      campo.focus();
+
+      const entrar = async () => {
+        const boton = $("tEntrar");
+        if (boton.disabled) return;
+        busy(boton, true, "Entrar");
+        try {
+          await verificarCodigo(email, campo.value);
+          cerrar();
+          renderRanking();
+          toast("Sesión iniciada");
+          await recuperarGrupo();
+          if (group && supaReady()) ciclo({ forzar: true, conDias: true });
+        } catch (e) {
+          busy(boton, false, "Entrar");
+          showModalError(e.message);
+        }
+      };
+
+      campo.addEventListener("keydown", (e) => { if (e.key === "Enter") entrar(); });
+      wireButton($("tEntrar"), entrar);
+      wireButton($("tOtro"), () => { cerrar(); openCuenta(); });
+      wireButton($("tReenviar"), async () => {
+        try { await pedirCodigo(email); toast("Código reenviado"); }
+        catch (e) { showModalError(e.message); }
+      });
     }
   );
 }
