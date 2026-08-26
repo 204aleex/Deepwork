@@ -1,64 +1,83 @@
 -- =====================================================================
---  Deep Work · ver y limpiar duplicados, y recuperar la propiedad
+--  Deep Work · limpieza de duplicados
 --
---  Ejecuta los pasos DE UNO EN UNO (selecciona el bloque y "Run selected").
---  El paso 1 sólo mira. Los pasos 2 y 3 cambian cosas.
+--  Ejecuta los bloques DE UNO EN UNO: selecciona el bloque y pulsa
+--  "Run selected". Así ves el efecto de cada paso.
+--
+--  Se identifica a la gente por apodo dentro de su grupo, que es único,
+--  en vez de por UUID: menos margen para equivocarse copiando.
 -- =====================================================================
 
 
 -- ---------------------------------------------------------------------
--- PASO 1 · Mirar qué hay. No cambia nada.
---
---   soy_el_dueno = true  -> esa fila es la que manda en el grupo
---   horas        -> para saber cuál es tu fila buena y cuál el duplicado
+-- PASO 1 · Mirar. No cambia nada.
 -- ---------------------------------------------------------------------
 select
-  g.name                                    as grupo,
-  g.code                                    as codigo,
-  m.nickname                                as apodo,
-  (g.owner_id = m.id)                       as es_el_dueno,
+  g.name                                                  as grupo,
+  m.nickname                                              as apodo,
+  (g.owner_id = m.id)                                     as es_el_dueno,
   round((coalesce(sum(d.minutes), 0) / 60.0)::numeric, 1) as horas,
-  m.last_seen                               as ultima_conexion,
-  m.id                                      as member_id
+  m.id                                                    as member_id
 from public.dw_groups g
 join public.dw_members m on m.group_id = g.id
 left join public.dw_days d on d.member_id = m.id
-group by g.id, g.name, g.code, g.owner_id, m.id, m.nickname, m.last_seen
+group by g.id, g.name, g.owner_id, m.id, m.nickname
 order by g.name, horas desc;
 
 
 -- ---------------------------------------------------------------------
--- PASO 2 · Hacerte dueño del grupo.
---
---   Cambia 'Grupo abierto :)' por el nombre exacto de tu grupo, y
---   'TU_APODO' por el apodo de TU fila (la que quieres conservar, la que
---   sale con más horas en el paso 1).
---
---   Después de esto, en la app ya te saldrán "Quitar a alguien",
---   "Grupo abierto" y poder renombrar el grupo.
+-- PASO 2 · Borrar los grupos de prueba enteros.
+--   "Verificacion actualizar" y "Verificacion post-migracion" son grupos
+--   que creé yo comprobando el esquema. "Chichablood" lo confirmaste
+--   como de pruebas.
+--   El borrado arrastra en cascada sus miembros y sus días.
+-- ---------------------------------------------------------------------
+delete from public.dw_groups
+ where name in (
+   'Verificacion actualizar',
+   'Verificacion post-migracion',
+   'Chichablood'
+ );
+
+
+-- ---------------------------------------------------------------------
+-- PASO 3 · Hacerte dueño de "Grupo abierto :)".
+--   Tu fila es 'Alex pc 2', la de 6,3 h. La propiedad se había quedado
+--   en 'Alex pc', que es una fila vieja.
+--   Esto va ANTES de borrar nada, para no dejar el grupo sin dueño.
 -- ---------------------------------------------------------------------
 update public.dw_groups g
    set owner_id = (
      select m.id from public.dw_members m
-      where m.group_id = g.id and m.nickname = 'TU_APODO'
+      where m.group_id = g.id and m.nickname = 'Alex pc 2'
       limit 1
    )
  where g.name = 'Grupo abierto :)';
 
 
 -- ---------------------------------------------------------------------
--- PASO 3 · Borrar un duplicado.
---
---   Copia el member_id del paso 1 (la fila que quieres quitar) y pégalo
---   aquí. Repite por cada duplicado.
---
---   Esto borra esa fila y sus horas de ese grupo. Lo que esa persona
---   tenga guardado en su propio móvil no se toca.
+-- PASO 4 · Borrar tus tres filas duplicadas.
+--   Se borran por apodo y sólo dentro de ese grupo. 'Alex pc 2' NO está
+--   en la lista, así que tu fila buena no se toca.
 -- ---------------------------------------------------------------------
--- delete from public.dw_members where id = 'PEGA_AQUI_EL_MEMBER_ID';
+delete from public.dw_members m
+ using public.dw_groups g
+ where m.group_id = g.id
+   and g.name = 'Grupo abierto :)'
+   and m.nickname in ('Alex pc', 'Movil 3', 'Movil 2');
 
 
 -- ---------------------------------------------------------------------
--- PASO 4 · Comprobar que ha quedado bien. No cambia nada.
+-- PASO 5 · Comprobar. Debe quedar un solo grupo con una sola fila tuya,
+--   y es_el_dueno en true.
 -- ---------------------------------------------------------------------
--- (vuelve a ejecutar el PASO 1)
+select
+  g.name                                                  as grupo,
+  m.nickname                                              as apodo,
+  (g.owner_id = m.id)                                     as es_el_dueno,
+  round((coalesce(sum(d.minutes), 0) / 60.0)::numeric, 1) as horas
+from public.dw_groups g
+join public.dw_members m on m.group_id = g.id
+left join public.dw_days d on d.member_id = m.id
+group by g.id, g.name, g.owner_id, m.id, m.nickname
+order by g.name, horas desc;
