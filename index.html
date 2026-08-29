@@ -25,27 +25,27 @@
          --dim   sobre --card → 5,3:1
          --muted sobre --card → 7,6:1
          --accent sobre --card → 4,6:1 */
-    --bg: #14141a;
-    --card: #1c1c24;
-    --panel: #232330;
-    --panel-2: #2b2b38;
-    --raised: #33333f;
-    --line: rgba(255,255,255,.09);
-    --line-2: rgba(255,255,255,.17);
-    --text: #f4f4f8;
-    --muted: #adadbd;
-    --dim: #8f8fa1;
-    --accent: #5b7cff;
-    --accent-deep: #3651d4;
+    --bg: #1c1c25;
+    --card: #262631;
+    --panel: #2e2e3c;
+    --panel-2: #383846;
+    --raised: #424252;
+    --line: rgba(255,255,255,.10);
+    --line-2: rgba(255,255,255,.18);
+    --text: #f6f6fa;
+    --muted: #b6b6c6;
+    --dim: #9a9aac;
+    --accent: #708dff;
+    --accent-deep: #3f59dd;
     --good: #3ddc97;
-    --veil: rgba(10,10,14,.74);
+    --veil: rgba(14,14,20,.72);
     /* Escala de la rejilla. Es la única fuente: la leyenda y el JS la leen
        de aquí, para que no haya que cambiar el color en tres sitios. */
-    --l0: #2f2f3d;
-    --l1: #2a3a80;
-    --l2: #3a50b4;
-    --l3: #4a65dd;
-    --l4: #7d97ff;
+    --l0: #3a3a4a;
+    --l1: #31469b;
+    --l2: #4160c6;
+    --l3: #5e7ae8;
+    --l4: #8aa2ff;
     --ease: cubic-bezier(.22,1,.36,1);
     --spring: cubic-bezier(.34,1.4,.64,1);
     --cell: 16px;
@@ -777,6 +777,55 @@
     animation: cardIn .3s var(--ease) both;
   }
   .modal .fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+
+  /* ===================== escritorio =====================
+     A partir de 1040px sobra ancho de sobra y sobraba pantalla en vertical:
+     todo iba en una columna y había que bajar para ver la gente. Se reparte
+     en dos: el temporizador fijo a la izquierda y la gente + el historial a
+     la derecha, con su propio scroll interno para que la página no crezca.
+
+     La condición de alto evita que en una pantalla baja (o con el navegador
+     a media altura) se apriete todo: por debajo de 700px se vuelve a la
+     columna de siempre. */
+  @media (min-width: 1040px) and (min-height: 700px) {
+    .page { align-items: center; padding-top: 16px; padding-bottom: 16px; }
+
+    .stack {
+      max-width: 1240px;
+      height: calc(100dvh - 32px);
+      display: grid;
+      grid-template-columns: 400px minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      column-gap: 18px;
+      row-gap: 12px;
+      align-items: start;
+    }
+
+    .topbar     { grid-column: 1 / -1; grid-row: 1; }
+    #noticeSlot { grid-column: 1 / -1; grid-row: 2; }
+    /* El temporizador ocupa las dos filas de la derecha, para que la
+       columna izquierda no se parta. */
+    .stage      { grid-column: 1; grid-row: 3 / span 2; align-self: start; }
+
+    /* La derecha es una pila con su propio alto: si la gente o el
+       historial crecen, hacen scroll ahí dentro y la página no se mueve. */
+    #rankCard, .fold {
+      grid-column: 2;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #rankCard { grid-row: 3; align-self: stretch; overflow: hidden; }
+    #rankBody { overflow-y: auto; min-height: 0; flex: 1; }
+    .fold     { grid-row: 4; overflow: hidden; max-height: 42vh; }
+    .fold-body { overflow-y: auto; min-height: 0; }
+
+    /* El anillo ya no depende del ancho de la ventana, que en escritorio
+       lo disparaba: manda la columna. */
+    .dial-wrap { width: 300px; }
+    .dial-clock { font-size: 56px; }
+    .dial-clock.long { font-size: 42px; }
+  }
 
   @media (max-width: 560px) {
     .card { padding: 18px 14px 14px; border-radius: 20px; }
