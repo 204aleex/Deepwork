@@ -926,16 +926,33 @@
       /* Las laterales crecen con el ancho pero con techo: pasado cierto
          punto, ensancharlas solo estira el texto. Lo que sobra va al
          centro, que es lo que se mira. */
-      --lado-izq: clamp(272px, 19vw, 372px);
+      /* Los dos huecos van en variables porque entran en la cuenta del
+         lado del cuadrado: si se escriben dos veces, se descuadra. */
+      --hueco-col: clamp(16px, 1.3vw, 26px);
+      --hueco-fila: 14px;
+
+      /* El lado del cuadrado es el menor de tres cosas:
+           - el alto de la fila de contenido, que es todo el alto de la
+             pagina menos su margen y el hueco de la fila del aviso. Al
+             coincidir con el alto de la fila, el reloj queda a la misma
+             altura que las tarjetas de los lados en vez de un poco mas
+             bajo;
+           - un tope de 1100px, para que en un monitor de 1440p no se coma
+             la banda entera;
+           - lo que queda de ancho tras reservar 300px para cada columna
+             lateral, que es lo que impide que en una pantalla estrecha
+             empuje a los lados fuera de la ventana. */
       --lado: min(
-        calc(100dvh - 128px),
+        calc(100dvh - 48px - var(--hueco-fila)),
         1100px,
-        calc(100vw - 410px - clamp(272px, 19vw, 372px))
+        calc(100vw - 50px - 2 * var(--hueco-col) - 600px)
       );
-      grid-template-columns: var(--lado-izq) var(--lado) minmax(310px, 1fr);
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
-      column-gap: clamp(16px, 1.3vw, 26px);
-      row-gap: clamp(12px, 1.1vh, 18px);
+      /* Laterales iguales: es lo unico que deja el cuadrado en el centro
+         exacto de la pantalla. */
+      grid-template-columns: minmax(300px, 1fr) var(--lado) minmax(300px, 1fr);
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      column-gap: var(--hueco-col);
+      row-gap: var(--hueco-fila);
     }
 
     /* Radios mas generosos con las tarjetas mas grandes: una esquina de
@@ -943,17 +960,17 @@
     .card { border-radius: clamp(24px, 1.9vw, 34px); }
     .btn  { border-radius: 14px; }
 
-    .topbar     { grid-column: 1 / -1; grid-row: 1; }
-    /* Los chips de arriba sobran aqui: la cuenta y el grupo tienen su
-       propia tarjeta a la derecha, con los mismos botones y sitio para
-       explicar que hace cada uno. */
-    .topbar-right { display: none; }
-    .brand { font-size: clamp(11px, .78vw, 14px); }
-    #noticeSlot { grid-column: 1 / -1; grid-row: 2; }
+    /* La barra de arriba entera sobra en el escritorio: los dos chips
+       tienen su propia tarjeta a la derecha, con los mismos botones y
+       sitio para explicarlos, y el nombre de la app ya esta en la
+       pestaña del navegador. Lo que se gana son 45px de alto para el
+       cuadrado del reloj. */
+    .topbar { display: none; }
+    #noticeSlot { grid-column: 1 / -1; grid-row: 1; }
 
     /* --- izquierda: el calendario, de arriba abajo --- */
     #historyFold {
-      grid-column: 1; grid-row: 3 / span 2;
+      grid-column: 1; grid-row: 2 / span 2;
       min-height: 0; overflow: hidden;
       --cell: 24px; --cell-gap: 5px; --cal-gutter: 36px;
     }
@@ -977,11 +994,13 @@
 
     /* --- centro: el reloj, cuadrado --- */
     .stage {
-      grid-column: 2; grid-row: 3 / span 2;
+      grid-column: 2; grid-row: 2 / span 2;
       align-self: center; justify-self: stretch;
       aspect-ratio: 1;
-      /* La columna ya mide el cuadrado: aqui solo hay que llenarla. */
-      width: 100%;
+      /* La columna ya mide el cuadrado: aqui solo hay que llenarla. Con
+         un aviso arriba la fila encoge, y prefiero que la tarjeta pierda
+         un poco de cuadratura a que la pagina saque barra de scroll. */
+      width: 100%; max-height: 100%;
       justify-content: center;
       container-type: inline-size;
       gap: clamp(11px, 2.6cqw, 34px);
@@ -1040,7 +1059,7 @@
 
     /* --- derecha: ranking arriba, cuenta y grupos abajo --- */
     #rankCard {
-      grid-column: 3; grid-row: 3;
+      grid-column: 3; grid-row: 2;
       min-height: 0; overflow: hidden;
       display: flex; flex-direction: column;
       padding: clamp(18px, 1.6vw, 26px) clamp(18px, 1.5vw, 24px) clamp(14px, 1.2vw, 20px);
@@ -1064,7 +1083,7 @@
     #rankCard .sync-line { font-size: clamp(11px, .8vw, 13px); }
 
     #socialCard {
-      grid-column: 3; grid-row: 4;
+      grid-column: 3; grid-row: 3;
       padding: clamp(16px, 1.35vw, 22px) clamp(18px, 1.5vw, 24px) clamp(14px, 1.2vw, 20px);
     }
     #socialCard .rank-head { margin-bottom: 2px; }
@@ -3320,10 +3339,8 @@ function renderSocial() {
   body.innerHTML = html;
   wireButton($("socAcct"), openCuenta);
   wireButton($("socSwitch"), openGrupos);
-  // Cambiar el apodo abre los ajustes con el campo ya enfocado: es lo que
-  // mas se toca y estaba a dos clics de distancia.
-  wireButton($("socNick"), () => openGroupSettings(true));
-  wireButton($("socSettings"), () => openGroupSettings());
+  wireButton($("socNick"), openApodo);
+  wireButton($("socSettings"), openGroupSettings);
 }
 
 function renderGroupChip() {
@@ -3815,7 +3832,58 @@ function renderCuentaChip() {
   }
 }
 
-function openGroupSettings(focoNick) {
+/* Cambiar el apodo tenia su boton pero abria los ajustes enteros, o sea
+   el mismo sitio que el boton de al lado. Un dialogo de un solo campo: es
+   lo que mas se toca y no hay que leer nada mas para hacerlo. */
+function openApodo() {
+  openModal(
+    "<h2>Tu apodo</h2>" +
+    '<div class="sub">Así te ve el resto de ' + escapeHtml(group.name) + "</div>" +
+    '<div class="fields">' +
+      '<div><input class="text" id="aNick" maxlength="24" value="' + escapeHtml(group.nickname) + '" /></div>' +
+    "</div>" +
+    '<div class="modal-actions">' +
+      '<button class="btn btn-ghost" id="aCancel">Cancelar</button>' +
+      '<button class="btn btn-primary" id="aSave">Guardar</button>' +
+    "</div>",
+    (cerrar) => {
+      const campo = $("aNick");
+      campo.focus();
+      campo.select();
+
+      const guardar = async () => {
+        const boton = $("aSave");
+        if (boton.disabled) return;
+        const nick = campo.value.trim();
+        if (!nick || nick === group.nickname) { cerrar(); return; }
+        busy(boton, true, "Guardar");
+        try {
+          await rpc("dw_push", {
+            p_member: group.memberId, p_secret: group.secret,
+            p_days: null, p_nickname: nick
+          });
+          group.nickname = nick;
+          prefs.nickname = nick;
+          savePrefs();
+          saveGroup();
+          cerrar();
+          renderRanking();
+          await ciclo({ forzar: true });
+          toast("Ahora eres " + nick);
+        } catch (e) {
+          busy(boton, false, "Guardar");
+          showModalError(e.message);
+        }
+      };
+
+      campo.addEventListener("keydown", (e) => { if (e.key === "Enter") guardar(); });
+      wireButton($("aSave"), guardar);
+      wireButton($("aCancel"), cerrar);
+    }
+  );
+}
+
+function openGroupSettings() {
   const publico = !!group.isPublic;
   const dueno = !!group.isOwner;
 
@@ -3913,7 +3981,6 @@ function openGroupSettings(focoNick) {
       document.querySelectorAll(".modal input.text").forEach((i) =>
         i.addEventListener("keydown", (e) => { if (e.key === "Enter") guardar(); }));
       wireButton($("sSave"), guardar);
-      if (focoNick === true) { const c = $("sNick"); c.focus(); c.select(); }
     }
   );
 }
