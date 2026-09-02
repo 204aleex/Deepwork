@@ -7,8 +7,8 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#14141a",
-  "theme_color": "#14141a",
+  "background_color": "#1c1c25",
+  "theme_color": "#1c1c25",
   "orientation": "any",
   "categories": ["productivity", "lifestyle"],
   "icons": [

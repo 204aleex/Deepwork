@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Deep Work</title>
 <meta name="description" content="Registro diario de sesiones de trabajo profundo." />
-<meta name="theme-color" content="#14141a" />
+<meta name="theme-color" content="#1c1c25" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -16,6 +16,14 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg" />
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
+<!-- Tipografía del contador. Sólo la gasta la cifra grande y las tres
+     cifras de debajo: el resto de la interfaz sigue con la del sistema,
+     que a tamaño pequeño se lee mejor y no cuesta una descarga. Si la red
+     falla, cae al redondeado del sistema y no se rompe nada. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&display=swap" />
 <style>
   :root {
     /* Paleta. Antes el fondo era casi negro (#020203) y los grises pequeños
@@ -50,6 +58,10 @@
     --l2: #4160c6;
     --l3: #5e7ae8;
     --l4: #8aa2ff;
+    /* Geométrica y de terminaciones redondas, con cifras de ancho fijo:
+       a 100px el contador no baila al pasar los segundos. Las alternativas
+       del sistema van detrás por si no llega la descarga. */
+    --font-dial: "Outfit", ui-rounded, "SF Pro Rounded", "Segoe UI Variable Display", system-ui, sans-serif;
     --ease: cubic-bezier(.22,1,.36,1);
     --spring: cubic-bezier(.34,1.4,.64,1);
     --cell: 16px;
@@ -212,15 +224,15 @@
   }
   body.running .dial-state { color: var(--accent); }
   .dial-clock {
-    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
-    font-size: clamp(40px, 13.5vw, 62px);
-    font-weight: 600; letter-spacing: -.03em;
+    font-family: var(--font-dial);
+    font-size: clamp(44px, 15vw, 70px);
+    font-weight: 500; letter-spacing: -.02em;
     font-variant-numeric: tabular-nums; line-height: 1;
     opacity: .55; transition: opacity .4s var(--ease);
     white-space: nowrap;
   }
   /* H:MM:SS son ocho caracteres: no caben al tamaño de MM:SS */
-  .dial-clock.long { font-size: clamp(29px, 9.6vw, 46px); }
+  .dial-clock.long { font-size: clamp(30px, 10.2vw, 50px); }
   body.running .dial-clock { opacity: 1; }
   .dial-goal {
     font-size: 12px; color: var(--dim);
@@ -251,9 +263,13 @@
     transition: transform .35s var(--spring), border-color .35s var(--ease);
   }
   .mini.bump { transform: translateY(-3px); border-color: rgba(91,124,255,.45); }
+  /* Las tres cifras de debajo comparten la voz del contador: son el mismo
+     dato a otra escala, y con dos tipografías distintas parecían de dos
+     pantallas distintas. */
   .mini-value {
-    font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
-    font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums;
+    font-family: var(--font-dial);
+    font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
   }
   .mini-label { font-size: 10px; color: var(--dim); margin-top: 2px; }
 
@@ -280,7 +296,10 @@
      siempre abierto: el contenido de un <details> cerrado lo esconde el
      navegador por debajo del CSS y no hay forma fiable de forzarlo desde
      una media query. */
-  .fold { padding: 0; display: flex; flex-direction: column; }
+  /* El ancho de la columna de meses del calendario vertical. Es variable
+     porque el JS necesita el mismo numero para calcular cuantas semanas
+     caben, y tenerlo en dos sitios distintos es como se desalinean. */
+  .fold { padding: 0; display: flex; flex-direction: column; --cal-gutter: 30px; }
   .fold-head {
     display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
     width: 100%; text-align: left; background: none; border: none;
@@ -364,12 +383,13 @@
   /* Aqui la etiqueta de la fila es el mes, no el dia de la semana: el dia
      ya lo dice la columna. */
   .grid-inner.vert .day-label {
-    flex: 0 0 30px; width: 30px; font-size: 10px; text-align: right;
+    flex: 0 0 var(--cal-gutter); width: var(--cal-gutter);
+    font-size: 10px; text-align: right;
     padding-right: 6px; margin-right: 0;
     position: static; background: none;
     display: flex; align-items: center; justify-content: flex-end;
   }
-  .cal-gutter { flex: 0 0 30px; width: 30px; }
+  .cal-gutter { flex: 0 0 var(--cal-gutter); width: var(--cal-gutter); }
 
   .month-row { display: flex; gap: var(--cell-gap); margin-bottom: 4px; }
   .month-cell { width: var(--cell); font-size: 10px; color: var(--dim); white-space: nowrap; }
@@ -875,69 +895,156 @@
      El limite de alto evita que en una ventana baja se apriete todo: por
      debajo de 720px vuelve la columna unica de siempre. */
   @media (min-width: 1120px) and (min-height: 720px) {
-    .page { align-items: center; padding-top: 14px; padding-bottom: 14px; }
+    /* Margen igual por los cuatro lados y nada de anchos fijos: el bloque
+       crece con la pantalla en vez de quedarse en una isla de 1460px con
+       trescientos pixeles muertos a cada lado. El tope de 1880px es para
+       que en un monitor ultrapanoramico las tres columnas no queden a
+       metros unas de otras. */
+    .page { align-items: center; padding: 24px; }
 
     .stack {
-      max-width: 1460px;
-      height: calc(100dvh - 28px);
+      max-width: 1880px;
+      height: calc(100dvh - 48px);
       display: grid;
-      grid-template-columns: 276px minmax(360px, 1fr) minmax(300px, 348px);
+      /* Las laterales crecen con el ancho pero con techo: pasado cierto
+         punto, ensancharlas solo estira el texto. Lo que sobra va al
+         centro, que es lo que se mira. */
+      grid-template-columns:
+        clamp(272px, 18vw, 372px)
+        minmax(0, 1fr)
+        clamp(306px, 22.5vw, 440px);
       grid-template-rows: auto auto minmax(0, 1fr) auto;
-      column-gap: 16px;
-      row-gap: 12px;
+      column-gap: clamp(16px, 1.3vw, 26px);
+      row-gap: clamp(12px, 1.1vh, 18px);
     }
+
+    /* Radios mas generosos con las tarjetas mas grandes: una esquina de
+       24px en una tarjeta de 900px se ve casi recta. */
+    .card { border-radius: clamp(24px, 1.9vw, 34px); }
+    .btn  { border-radius: 14px; }
 
     .topbar     { grid-column: 1 / -1; grid-row: 1; }
     /* Los chips de arriba sobran aqui: la cuenta y el grupo tienen su
        propia tarjeta a la derecha, con los mismos botones y sitio para
        explicar que hace cada uno. */
     .topbar-right { display: none; }
+    .brand { font-size: clamp(11px, .78vw, 14px); }
     #noticeSlot { grid-column: 1 / -1; grid-row: 2; }
 
     /* --- izquierda: el calendario, de arriba abajo --- */
     #historyFold {
       grid-column: 1; grid-row: 3 / span 2;
       min-height: 0; overflow: hidden;
-      --cell: 22px; --cell-gap: 4px;
+      --cell: 24px; --cell-gap: 5px; --cal-gutter: 36px;
     }
-    #historyFold .fold-body { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+    #historyFold .fold-head { padding: clamp(16px, 1.5vw, 22px) clamp(18px, 1.6vw, 26px) 12px; }
+    #historyFold .fold-body { min-height: 0; flex: 1; display: flex; flex-direction: column;
+                              padding: 0 clamp(18px, 1.6vw, 26px) clamp(16px, 1.4vw, 22px); }
     #historyFold .grid-wrap { flex: 1; min-height: 0; }
     /* Aqui no se pliega: es la columna, no un desplegable. */
     #historyFold .fold-head { cursor: default; }
     #historyFold .fold-head::after { content: none; }
-    #historyFold .legend-row { margin-top: 10px; }
-    #historyFold .summary { gap: 6px 12px; font-size: 11px; }
+    #historyFold .fold-title { font-size: clamp(15px, 1.15vw, 19px); }
+    #historyFold .fold-sub { font-size: clamp(11.5px, .85vw, 13.5px); }
+    #historyFold .legend-row { margin-top: 12px; }
+    #historyFold .legend-label { font-size: clamp(10px, .72vw, 12px); }
+    #historyFold .legend-swatch { width: clamp(12px, 1vw, 16px); height: clamp(12px, 1vw, 16px); }
+    #historyFold .summary { gap: 8px 14px; font-size: clamp(11px, .82vw, 13px); }
+    #historyFold .link-btn { font-size: clamp(11px, .82vw, 13px); }
+    .grid-inner.vert .month-cell { font-size: clamp(9.5px, .68vw, 11.5px); }
+    .grid-inner.vert .day-label { font-size: clamp(10px, .72vw, 12px); }
+    .grid-inner.vert .cell { border-radius: clamp(5px, .45vw, 8px); }
 
     /* --- centro: el reloj, cuadrado --- */
     .stage {
       grid-column: 2; grid-row: 3 / span 2;
       align-self: center; justify-self: center;
       aspect-ratio: 1;
-      width: min(100%, 560px, calc(100dvh - 190px));
+      /* Cuadrado de verdad: manda el lado que se acabe antes, el ancho de
+         la columna o el alto de la ventana. */
+      width: min(100%, calc(100dvh - 128px));
       justify-content: center;
+      gap: clamp(18px, 2.4vh, 36px);
+      padding: clamp(26px, 2.6vw, 46px);
+      border-radius: clamp(28px, 2.6vw, 46px);
     }
-    .dial-wrap { width: min(320px, 58%); }
-    .dial-clock { font-size: clamp(38px, 3.6vw, 54px); }
-    .dial-clock.long { font-size: clamp(30px, 2.8vw, 42px); }
+    .dial-wrap { width: min(71%, 680px, calc(100dvh - 440px)); }
+    .dial-face { padding: 0 12%; gap: clamp(6px, .8vh, 14px); }
+    .dial-state { font-size: clamp(10.5px, .75vw, 14px); letter-spacing: .2em; }
+    .dial-clock { font-size: clamp(46px, 5.6vw, 116px); font-weight: 400; }
+    .dial-clock.long { font-size: clamp(34px, 3.9vw, 80px); }
+    .dial-goal { font-size: clamp(12px, .92vw, 17px); }
+    .dial-track, .dial-arc { stroke-width: 7.5; }
+
+    .stage-actions { max-width: min(74%, 480px); gap: clamp(8px, .8vw, 14px); }
+    .stage-actions .btn {
+      min-height: clamp(50px, 5.4vh, 68px);
+      font-size: clamp(14px, 1.05vw, 19px);
+      border-radius: clamp(14px, 1.2vw, 20px);
+    }
+    .mini-stats { max-width: min(84%, 540px); gap: clamp(10px, .9vw, 16px); }
+    .mini { padding: clamp(9px, 1.3vh, 18px) 8px; border-radius: clamp(12px, 1.1vw, 18px); }
+    .mini-value { font-size: clamp(15px, 1.3vw, 24px); }
+    .mini-label { font-size: clamp(10px, .72vw, 13px); margin-top: 3px; }
+    .stage-extra { min-height: clamp(34px, 3.4vh, 46px); }
+    .stage-extra .link-btn { font-size: clamp(12px, .88vw, 15px); }
 
     /* --- derecha: ranking arriba, cuenta y grupos abajo --- */
     #rankCard {
       grid-column: 3; grid-row: 3;
       min-height: 0; overflow: hidden;
       display: flex; flex-direction: column;
+      padding: clamp(18px, 1.6vw, 26px) clamp(18px, 1.5vw, 24px) clamp(14px, 1.2vw, 20px);
     }
-    #rankCard .rank-head { margin-bottom: 10px; }
-    #rankCard .rank-head h2 { font-size: 16px; }
-    #rankCard .view-tab { padding: 8px 10px; min-height: 34px; }
-    #rankCard .metric-tab { padding: 6px 9px; font-size: 11.5px; }
+    #rankCard .rank-head { margin-bottom: clamp(10px, 1vw, 16px); }
+    #rankCard .rank-head h2 { font-size: clamp(16px, 1.3vw, 23px); }
+    #rankCard .eyebrow { font-size: clamp(10.5px, .78vw, 13px); }
+    #rankCard .view-tab { padding: 8px clamp(10px, .8vw, 16px); min-height: clamp(34px, 3.4vh, 42px);
+                          font-size: clamp(12.5px, .92vw, 15px); }
+    #rankCard .metric-tab { padding: 6px clamp(9px, .7vw, 14px); font-size: clamp(11.5px, .85vw, 14px); }
     #rankBody { overflow-y: auto; min-height: 0; flex: 1; }
+    #rankCard .rank-row, #rankCard .person {
+      padding: clamp(11px, 1.2vh, 17px) clamp(12px, 1vw, 16px);
+      border-radius: clamp(12px, 1vw, 16px);
+    }
+    #rankCard .rank-name, #rankCard .person-name { font-size: clamp(14px, 1.02vw, 17px); }
+    #rankCard .rank-sub, #rankCard .person-sub { font-size: clamp(11px, .82vw, 13.5px); }
+    #rankCard .rank-value, #rankCard .person-value { font-size: clamp(14px, 1.05vw, 18px); }
+    #rankCard .mono { width: clamp(32px, 2.5vw, 42px); height: clamp(32px, 2.5vw, 42px);
+                      font-size: clamp(13px, 1vw, 17px); border-radius: clamp(10px, .9vw, 14px); }
+    #rankCard .sync-line { font-size: clamp(11px, .8vw, 13px); }
 
-    #socialCard { grid-column: 3; grid-row: 4; padding: 16px 18px 14px; }
+    #socialCard {
+      grid-column: 3; grid-row: 4;
+      padding: clamp(16px, 1.35vw, 22px) clamp(18px, 1.5vw, 24px) clamp(14px, 1.2vw, 20px);
+    }
     #socialCard .rank-head { margin-bottom: 2px; }
-    #socialCard .rank-head h2 { font-size: 15px; }
-    #socialCard .soc-row { padding: 10px 0; }
-    #socialCard .soc-acts { margin-top: 10px; }
-    #socialCard .soc-acts .btn { min-height: 36px; font-size: 12px; padding: 8px 10px; }
+    #socialCard .rank-head h2 { font-size: clamp(15px, 1.2vw, 20px); }
+    #socialCard .eyebrow { font-size: clamp(10.5px, .78vw, 13px); }
+    #socialCard .soc-row { padding: clamp(10px, 1.1vh, 16px) 0; }
+    #socialCard .soc-name { font-size: clamp(14px, 1.02vw, 17px); }
+    #socialCard .soc-sub { font-size: clamp(11.5px, .85vw, 14px); }
+    #socialCard .mono { width: clamp(32px, 2.5vw, 42px); height: clamp(32px, 2.5vw, 42px);
+                        font-size: clamp(13px, 1vw, 17px); border-radius: clamp(10px, .9vw, 14px); }
+    #socialCard .soc-acts { margin-top: clamp(10px, 1vw, 16px); }
+    #socialCard .soc-acts .btn {
+      min-height: clamp(36px, 3.8vh, 48px);
+      font-size: clamp(12px, .88vw, 15px);
+      padding: 8px 10px;
+      min-width: 76px;
+    }
+    #socialCard .soc-row .btn { min-height: clamp(38px, 3.8vh, 48px); font-size: clamp(12.5px, .9vw, 15px); }
+
+    @media (max-height: 980px) {
+      #socialCard { padding: 12px 16px 13px; }
+      #socialCard .rank-head { display: none; }
+      #socialCard .soc-row { padding: 9px 0; }
+      #socialCard .soc-acts { margin-top: 9px; }
+      #socialCard .soc-acts .btn { min-height: 34px; font-size: 12px; }
+      #socialCard .soc-row .btn { min-height: 36px; }
+      #socialCard .mono { width: 30px; height: 30px; font-size: 12.5px; }
+      #socialCard .soc-sub { font-size: 11.5px; }
+    }
   }
 
   @media (max-width: 560px) {
@@ -2160,8 +2267,10 @@ const SEMANAS_MAX = 53;
 function semanasQueCaben() {
   if (!calendarioVertical()) return WEEKS_TO_SHOW;
   const wrap = $("gridWrap");
-  const gap = parseFloat(getComputedStyle($("historyFold")).getPropertyValue("--cell-gap")) || 4;
-  const util = wrap.clientWidth - 30 - gap * 7;
+  const css = getComputedStyle($("historyFold"));
+  const gap = parseFloat(css.getPropertyValue("--cell-gap")) || 4;
+  const hueco = parseFloat(css.getPropertyValue("--cal-gutter")) || 30;
+  const util = wrap.clientWidth - hueco - gap * 7;
   if (util <= 0) return WEEKS_TO_SHOW;
   const paso = util / 7 + gap;
   const caben = Math.floor((wrap.clientHeight - 24) / paso);
@@ -3108,7 +3217,7 @@ function renderSocial() {
         "</div>" +
       "</div>" +
       '<div class="soc-acts">' +
-        '<button class="btn btn-ghost" id="socNick">Cambiar apodo</button>' +
+        '<button class="btn btn-ghost" id="socNick" aria-label="Cambiar tu apodo">Apodo</button>' +
         '<button class="btn btn-ghost" id="socSettings">Ajustes</button>' +
         '<button class="btn btn-ghost" id="socSwitch">Otro grupo</button>' +
       "</div>";
