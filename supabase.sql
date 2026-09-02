@@ -89,6 +89,23 @@ create unique index if not exists dw_members_user_idx
 create index if not exists dw_members_user_lookup
   on public.dw_members (user_id) where user_id is not null;
 
+-- Marca a quien ha tocado el interruptor de "compartir mi conexión". Sin
+-- ella no se puede distinguir "lo apagué yo" de "nació apagado", y la
+-- corrección de abajo pisaría decisiones ajenas cada vez que se vuelva a
+-- ejecutar este fichero.
+alter table public.dw_members
+  add column if not exists presence_set boolean not null default false;
+
+-- Quien entraba en un grupo abierto nacía con la presencia APAGADA. La
+-- intención era buena —entre desconocidos, "última conexión hace 3 min" es
+-- el registro de horarios de una persona— pero el efecto era que en los
+-- grupos abiertos no se veía a nadie conectado nunca, ni siquiera a la
+-- gente que sí quería que la vieran. Ahora se comparte por defecto y se
+-- apaga a mano desde Ajustes. Sólo se toca a quien nunca eligió.
+update public.dw_members
+   set show_presence = true
+ where not presence_set and not show_presence;
+
 -- El latido reescribe last_seen y session_started_at cada 45 segundos.
 -- Deliberadamente NO se indexan esas columnas: la tabla tiene decenas de
 -- filas, un índice no acelera nada ahí y en cambio rompe el HOT update,
@@ -240,15 +257,33 @@ as $$
       dw_streak(m.id, p_today)                          as streak,
       d.last_day,
       m.show_presence,
-      case when m.show_presence and m.last_seen is not null
-           then greatest(0, extract(epoch from (now() - m.last_seen))::int)
+      case when m.show_presence and p.last_seen is not null
+           then greatest(0, extract(epoch from (now() - p.last_seen))::int)
       end                                               as seen_secs,
       case when m.show_presence
-                and m.session_started_at is not null
-                and m.session_started_at > now() - interval '6 hours'
-           then greatest(0, extract(epoch from (now() - m.session_started_at))::int)
+                and p.session_started_at is not null
+                and p.session_started_at > now() - interval '6 hours'
+           then greatest(0, extract(epoch from (now() - p.session_started_at))::int)
       end                                               as session_secs
     from dw_members m
+    -- Presencia GLOBAL. "Está trabajando ahora" es una propiedad de la
+    -- persona, no de la fila que tiene en este grupo concreto. Con cuenta
+    -- se puede estar en varios grupos, y hasta ahora cada fila llevaba su
+    -- propio latido: si trabajabas con la app abierta desde un grupo,
+    -- en el otro seguías apareciendo desconectado.
+    --
+    -- Se toma el latido más reciente de TODAS las filas de esa cuenta. Sin
+    -- cuenta no hay nada que agrupar y es su propia fila, igual que antes.
+    -- Las dos ramas del OR son indexables por separado (dw_members_pkey y
+    -- dw_members_user_lookup); un case/when en su lugar obligaría a
+    -- recorrer la tabla entera por cada miembro.
+    left join lateral (
+      select max(x.last_seen)          as last_seen,
+             max(x.session_started_at) as session_started_at
+        from dw_members x
+       where (m.user_id is not null and x.user_id = m.user_id)
+          or (m.user_id is null     and x.id = m.id)
+    ) p on true
     -- Un recorrido del índice (member_id, day) en vez de cuatro
     -- subconsultas correlacionadas.
     left join lateral (
@@ -412,12 +447,13 @@ begin
   insert into dw_groups (code, name, is_public)
     values (v_code, v_name, v_public) returning id into v_group_id;
 
-  -- En un grupo público la presencia arranca APAGADA. "Última conexión
-  -- hace 3 minutos" entre cinco amigos es un dato simpático; entre
-  -- desconocidos es el registro de horarios de una persona. Los minutos
-  -- siguen contando en el ranking igual: se compite sin publicar horario.
+  -- La presencia arranca ENCENDIDA, también en los grupos abiertos: ver
+  -- quién está trabajando ahora mismo es media app, y con ella apagada por
+  -- defecto la tabla de gente salía muerta. Se apaga desde Ajustes en un
+  -- clic y entonces queda marcado con presence_set, para que ninguna
+  -- migración posterior vuelva a encenderla.
   insert into dw_members (group_id, nickname, secret, last_seen, show_presence, user_id)
-    values (v_group_id, v_nick, v_secret, now(), not v_public, auth.uid())
+    values (v_group_id, v_nick, v_secret, now(), true, auth.uid())
     returning id into v_member;
 
   update dw_groups set owner_id = v_member where id = v_group_id;
@@ -425,7 +461,7 @@ begin
   return json_build_object(
     'code', v_code, 'name', v_name, 'group_id', v_group_id,
     'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
-    'is_public', v_public, 'is_owner', true, 'show_presence', not v_public
+    'is_public', v_public, 'is_owner', true, 'show_presence', true
   );
 end;
 $$;
@@ -486,7 +522,7 @@ begin
 
   begin
     insert into dw_members (group_id, nickname, secret, last_seen, show_presence, user_id)
-      values (v_group_id, v_nick, v_secret, now(), not coalesce(v_public, false), v_uid)
+      values (v_group_id, v_nick, v_secret, now(), true, v_uid)
       returning id into v_member;
   exception when unique_violation then
     raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
@@ -496,7 +532,7 @@ begin
     'code', v_code, 'name', v_name, 'group_id', v_group_id,
     'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
     'is_public', coalesce(v_public, false), 'is_owner', false,
-    'show_presence', not coalesce(v_public, false), 'reused', false
+    'show_presence', true, 'reused', false
   );
 end;
 $$;
@@ -547,7 +583,7 @@ begin
 
   begin
     insert into dw_members (group_id, nickname, secret, last_seen, show_presence, user_id)
-      values (p_group_id, v_nick, v_secret, now(), false, v_uid)
+      values (p_group_id, v_nick, v_secret, now(), true, v_uid)
       returning id into v_member;
   exception when unique_violation then
     raise exception 'Ya hay alguien con ese apodo en el grupo' using errcode = 'DW004';
@@ -556,7 +592,7 @@ begin
   return json_build_object(
     'code', v_code, 'name', v_name, 'group_id', p_group_id,
     'member_id', v_member, 'secret', v_secret, 'nickname', v_nick,
-    'is_public', true, 'is_owner', false, 'show_presence', false, 'reused', false
+    'is_public', true, 'is_owner', false, 'show_presence', true, 'reused', false
   );
 end;
 $$;
@@ -681,7 +717,8 @@ set search_path = public, pg_temp
 as $$
 begin
   update dw_members
-     set show_presence = coalesce(p_show, true)
+     set show_presence = coalesce(p_show, true),
+         presence_set  = true
    where id = p_member and secret = p_secret;
   if not found then
     raise exception 'Credenciales no válidas' using errcode = 'DW005';

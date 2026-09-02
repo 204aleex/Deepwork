@@ -22,9 +22,10 @@
        se perdían: --dim sobre la tarjeta daba 2,96:1, por debajo del 4,5:1
        que pide WCAG AA. Ahora las superficies son gris pizarra y los grises
        de texto están subidos hasta pasar el umbral:
-         --dim   sobre --card → 5,3:1
-         --muted sobre --card → 7,6:1
-         --accent sobre --card → 4,6:1 */
+         --dim    sobre --card → 5,4:1
+         --muted  sobre --card → 7,5:1
+         --accent sobre --card → 5,5:1  (4,9 sobre tu propia fila,
+                                         que lleva un velo azul encima) */
     --bg: #1c1c25;
     --card: #262631;
     --panel: #2e2e3c;
@@ -35,7 +36,10 @@
     --text: #f6f6fa;
     --muted: #b6b6c6;
     --dim: #9a9aac;
-    --accent: #708dff;
+    --accent: #7d97ff;
+    /* Solo para etiquetas pequeñas sobre un velo del propio acento, donde
+       --accent se queda corto de contraste. */
+    --accent-soft: #93a9ff;
     --accent-deep: #3f59dd;
     --good: #3ddc97;
     --veil: rgba(14,14,20,.72);
@@ -141,14 +145,14 @@
     background: var(--card); border: 1px solid var(--line-2);
     border-radius: 99px; padding: 7px 13px; min-height: 36px;
     color: var(--text); font-family: inherit; font-size: 12.5px; font-weight: 600;
-    cursor: pointer; max-width: 62vw; touch-action: manipulation;
+    cursor: pointer; max-width: 62vw; min-width: 0; touch-action: manipulation;
     transition: transform .18s var(--spring), border-color .2s, background .2s;
   }
   .group-chip:active { transform: scale(.96); }
-  .group-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .group-chip .chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .group-chip .chip-tag {
     font-size: 9px; letter-spacing: .08em; font-weight: 700;
-    background: rgba(91,124,255,.18); color: var(--accent);
+    background: rgba(125,151,255,.16); color: var(--accent-soft);
     border-radius: 5px; padding: 2px 5px; flex-shrink: 0;
   }
   .group-chip .chip-live {
@@ -270,19 +274,27 @@
   body.paused .dial-arc { opacity: .55; }
   body.paused .dial-wrap::after { content: none; }
 
-  /* ---------- historial plegado ---------- */
-  .fold { padding: 0; }
+  /* ---------- calendario plegable ----------
+     Era un <details>. Ahora es una seccion normal con un boton, porque en
+     el escritorio el calendario es una columna fija y tiene que estar
+     siempre abierto: el contenido de un <details> cerrado lo esconde el
+     navegador por debajo del CSS y no hay forma fiable de forzarlo desde
+     una media query. */
+  .fold { padding: 0; display: flex; flex-direction: column; }
   .fold-head {
     display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
-    padding: 16px 20px; cursor: pointer; list-style: none;
+    width: 100%; text-align: left; background: none; border: none;
+    font-family: inherit; color: inherit;
+    padding: 16px 20px; cursor: pointer;
     border-radius: 24px; user-select: none;
   }
-  .fold-head::-webkit-details-marker { display: none; }
   .fold-head::after {
     content: "▾"; margin-left: auto; color: var(--dim); font-size: 12px;
     transition: transform .25s var(--ease);
   }
-  .fold[open] .fold-head::after { transform: rotate(180deg); }
+  .fold-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .fold.cerrado .fold-head::after { transform: rotate(-90deg); }
+  .fold.cerrado .fold-body { display: none; }
   .fold-title { font-size: 15px; font-weight: 650; }
   .fold-sub { font-size: 11.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
   .fold-body { padding: 0 20px 18px; }
@@ -313,10 +325,51 @@
 
 
   /* ---------- rejilla ---------- */
-  .grid-wrap { overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
-  .grid-wrap::-webkit-scrollbar { height: 6px; }
-  .grid-wrap::-webkit-scrollbar-thumb { background: var(--l0); border-radius: 99px; }
+  .grid-wrap { overflow-x: auto; padding-bottom: 6px; }
+  .scroller, .grid-wrap, #rankBody, .sheet-body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--raised) transparent;
+  }
+  .grid-wrap::-webkit-scrollbar, #rankBody::-webkit-scrollbar,
+  .sheet-body::-webkit-scrollbar { width: 8px; height: 6px; }
+  .grid-wrap::-webkit-scrollbar-track, #rankBody::-webkit-scrollbar-track,
+  .sheet-body::-webkit-scrollbar-track { background: transparent; }
+  .grid-wrap::-webkit-scrollbar-thumb, #rankBody::-webkit-scrollbar-thumb,
+  .sheet-body::-webkit-scrollbar-thumb { background: var(--raised); border-radius: 99px; }
   .grid-inner { display: inline-block; min-width: 100%; }
+
+  /* ---- calendario en vertical ----
+     En el escritorio el calendario ocupa una columna estrecha y alta: las
+     semanas pasan a ser filas y los dias columnas, que es como se lee un
+     calendario de pared. Solo cambia el reparto; las celdas, el tooltip y
+     el teclado son exactamente los mismos. */
+  .grid-wrap.vert {
+    overflow-x: hidden; overflow-y: auto;
+    padding-bottom: 0; padding-right: 6px;
+    scrollbar-gutter: stable;
+  }
+  .grid-inner.vert { display: block; min-width: 0; }
+  .grid-inner.vert .month-row {
+    position: sticky; top: 0; z-index: 4;
+    background: var(--card); padding-bottom: 5px; margin-bottom: 3px;
+  }
+  .grid-inner.vert .month-cell {
+    flex: 1 1 0; width: auto; min-width: 0;
+    text-align: center; font-size: 9.5px; letter-spacing: 0;
+  }
+  .grid-inner.vert .cell {
+    flex: 1 1 0; width: auto; height: auto; aspect-ratio: 1; min-width: 0;
+  }
+  .grid-inner.vert .grid-row { align-items: stretch; }
+  /* Aqui la etiqueta de la fila es el mes, no el dia de la semana: el dia
+     ya lo dice la columna. */
+  .grid-inner.vert .day-label {
+    flex: 0 0 30px; width: 30px; font-size: 10px; text-align: right;
+    padding-right: 6px; margin-right: 0;
+    position: static; background: none;
+    display: flex; align-items: center; justify-content: flex-end;
+  }
+  .cal-gutter { flex: 0 0 30px; width: 30px; }
 
   .month-row { display: flex; gap: var(--cell-gap); margin-bottom: 4px; }
   .month-cell { width: var(--cell); font-size: 10px; color: var(--dim); white-space: nowrap; }
@@ -328,6 +381,11 @@
     width: 38px; font-size: 11px; color: var(--muted); flex-shrink: 0;
     position: sticky; left: 0; z-index: 3;
     background: var(--card);
+    align-self: stretch; display: flex; align-items: center;
+    /* el padding tapa el hueco de la rejilla; el margen negativo lo
+       devuelve para que la medida de la fila no cambie */
+    padding-right: var(--cell-gap);
+    margin-right: calc(var(--cell-gap) * -1);
   }
 
   .cell {
@@ -675,6 +733,29 @@
   .person.me .person-value { color: var(--accent); }
   .people.denso .person-value { font-size: 12.5px; }
 
+  /* ---------- tarjeta de cuenta y grupos ----------
+     Antes esto vivia repartido entre dos chips diminutos de la barra de
+     arriba y el pie del ranking. En el escritorio hay sitio de sobra para
+     enseñarlo con su nombre y una linea que diga para que sirve. */
+  .soc-row { display: flex; align-items: center; gap: 11px; padding: 12px 0; }
+  .soc-row + .soc-row { border-top: 1px solid var(--line); }
+  .soc-who { flex: 1; min-width: 0; }
+  .soc-name {
+    font-size: 14px; font-weight: 650;
+    display: flex; align-items: center; gap: 6px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .soc-sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; line-height: 1.45; }
+  .soc-sub b { color: var(--muted); font-weight: 650; }
+  .soc-row .btn { flex-shrink: 0; min-height: 38px; padding: 9px 14px; }
+  .soc-acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .soc-acts .btn { flex: 1; min-width: 92px; min-height: 40px; }
+  .tag {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .08em;
+    color: var(--accent-soft); background: rgba(125,151,255,.14);
+    border-radius: 5px; padding: 2px 5px; flex-shrink: 0;
+  }
+
   .stale-note {
     font-size: 11px; color: var(--dim); text-align: center;
     padding: 8px 0 2px;
@@ -695,7 +776,7 @@
   .rank-list { display: flex; flex-direction: column; gap: 2px; }
 
   .rank-row {
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; gap: 10px;
     padding: 11px 12px; border-radius: 12px;
     position: relative; overflow: hidden;
     border: 1px solid transparent;
@@ -715,7 +796,7 @@
   .rank-row > *:not(.bar) { position: relative; z-index: 1; }
 
   .rank-pos {
-    width: 30px; flex-shrink: 0; text-align: center;
+    width: 26px; flex-shrink: 0; text-align: center;
     font-family: "SF Mono", ui-monospace, monospace; font-size: 13px;
     font-variant-numeric: tabular-nums; color: var(--dim); font-weight: 600;
     display: flex; flex-direction: column; align-items: center; line-height: 1.1;
@@ -732,7 +813,13 @@
     font-size: 10px; font-weight: 700; letter-spacing: .08em; color: var(--accent);
     margin-left: 6px; vertical-align: 1px;
   }
-  .rank-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+  .rank-sub {
+    font-size: 11px; color: var(--dim); margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* El verde de "esta trabajando ahora" es el mismo en las dos pestañas:
+     si el estado se pinta distinto segun donde mires, deja de leerse. */
+  .rank-sub.viva { color: var(--good); }
 
   .rank-value {
     font-family: "SF Mono", ui-monospace, SFMono-Regular, monospace;
@@ -778,53 +865,79 @@
   }
   .modal .fields { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
 
-  /* ===================== escritorio =====================
-     A partir de 1040px sobra ancho de sobra y sobraba pantalla en vertical:
-     todo iba en una columna y había que bajar para ver la gente. Se reparte
-     en dos: el temporizador fijo a la izquierda y la gente + el historial a
-     la derecha, con su propio scroll interno para que la página no crezca.
+  /* ===================== escritorio: tres columnas =====================
+     El reparto sale de la maqueta: el calendario alto a la izquierda, el
+     reloj cuadrado en el centro y, a la derecha, el ranking arriba y la
+     cuenta y los grupos abajo. Todo cabe en una pantalla; lo que puede
+     crecer sin limite —la lista de gente, las semanas del calendario— hace
+     scroll dentro de su tarjeta, nunca en la pagina.
 
-     La condición de alto evita que en una pantalla baja (o con el navegador
-     a media altura) se apriete todo: por debajo de 700px se vuelve a la
-     columna de siempre. */
-  @media (min-width: 1040px) and (min-height: 700px) {
-    .page { align-items: center; padding-top: 16px; padding-bottom: 16px; }
+     El limite de alto evita que en una ventana baja se apriete todo: por
+     debajo de 720px vuelve la columna unica de siempre. */
+  @media (min-width: 1120px) and (min-height: 720px) {
+    .page { align-items: center; padding-top: 14px; padding-bottom: 14px; }
 
     .stack {
-      max-width: 1240px;
-      height: calc(100dvh - 32px);
+      max-width: 1460px;
+      height: calc(100dvh - 28px);
       display: grid;
-      grid-template-columns: 400px minmax(0, 1fr);
+      grid-template-columns: 276px minmax(360px, 1fr) minmax(300px, 348px);
       grid-template-rows: auto auto minmax(0, 1fr) auto;
-      column-gap: 18px;
+      column-gap: 16px;
       row-gap: 12px;
-      align-items: start;
     }
 
     .topbar     { grid-column: 1 / -1; grid-row: 1; }
+    /* Los chips de arriba sobran aqui: la cuenta y el grupo tienen su
+       propia tarjeta a la derecha, con los mismos botones y sitio para
+       explicar que hace cada uno. */
+    .topbar-right { display: none; }
     #noticeSlot { grid-column: 1 / -1; grid-row: 2; }
-    /* El temporizador ocupa las dos filas de la derecha, para que la
-       columna izquierda no se parta. */
-    .stage      { grid-column: 1; grid-row: 3 / span 2; align-self: start; }
 
-    /* La derecha es una pila con su propio alto: si la gente o el
-       historial crecen, hacen scroll ahí dentro y la página no se mueve. */
-    #rankCard, .fold {
-      grid-column: 2;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+    /* --- izquierda: el calendario, de arriba abajo --- */
+    #historyFold {
+      grid-column: 1; grid-row: 3 / span 2;
+      min-height: 0; overflow: hidden;
+      --cell: 22px; --cell-gap: 4px;
     }
-    #rankCard { grid-row: 3; align-self: stretch; overflow: hidden; }
-    #rankBody { overflow-y: auto; min-height: 0; flex: 1; }
-    .fold     { grid-row: 4; overflow: hidden; max-height: 42vh; }
-    .fold-body { overflow-y: auto; min-height: 0; }
+    #historyFold .fold-body { min-height: 0; flex: 1; display: flex; flex-direction: column; }
+    #historyFold .grid-wrap { flex: 1; min-height: 0; }
+    /* Aqui no se pliega: es la columna, no un desplegable. */
+    #historyFold .fold-head { cursor: default; }
+    #historyFold .fold-head::after { content: none; }
+    #historyFold .legend-row { margin-top: 10px; }
+    #historyFold .summary { gap: 6px 12px; font-size: 11px; }
 
-    /* El anillo ya no depende del ancho de la ventana, que en escritorio
-       lo disparaba: manda la columna. */
-    .dial-wrap { width: 300px; }
-    .dial-clock { font-size: 56px; }
-    .dial-clock.long { font-size: 42px; }
+    /* --- centro: el reloj, cuadrado --- */
+    .stage {
+      grid-column: 2; grid-row: 3 / span 2;
+      align-self: center; justify-self: center;
+      aspect-ratio: 1;
+      width: min(100%, 560px, calc(100dvh - 190px));
+      justify-content: center;
+    }
+    .dial-wrap { width: min(320px, 58%); }
+    .dial-clock { font-size: clamp(38px, 3.6vw, 54px); }
+    .dial-clock.long { font-size: clamp(30px, 2.8vw, 42px); }
+
+    /* --- derecha: ranking arriba, cuenta y grupos abajo --- */
+    #rankCard {
+      grid-column: 3; grid-row: 3;
+      min-height: 0; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    #rankCard .rank-head { margin-bottom: 10px; }
+    #rankCard .rank-head h2 { font-size: 16px; }
+    #rankCard .view-tab { padding: 8px 10px; min-height: 34px; }
+    #rankCard .metric-tab { padding: 6px 9px; font-size: 11.5px; }
+    #rankBody { overflow-y: auto; min-height: 0; flex: 1; }
+
+    #socialCard { grid-column: 3; grid-row: 4; padding: 16px 18px 14px; }
+    #socialCard .rank-head { margin-bottom: 2px; }
+    #socialCard .rank-head h2 { font-size: 15px; }
+    #socialCard .soc-row { padding: 10px 0; }
+    #socialCard .soc-acts { margin-top: 10px; }
+    #socialCard .soc-acts .btn { min-height: 36px; font-size: 12px; padding: 8px 10px; }
   }
 
   @media (max-width: 560px) {
@@ -835,6 +948,7 @@
     .view-tabs { flex: 1; }
     .view-tab { flex: 1; justify-content: center; }
     .stage { padding: 20px 14px 16px; gap: 15px; }
+    .soc-acts .btn { min-height: 44px; }
     .fold-head { padding: 14px 16px; }
     .fold-body { padding: 0 14px 14px; }
 
@@ -924,16 +1038,29 @@
     <div id="rankSync"></div>
   </section>
 
-  <!-- ===================== historial plegado ===================== -->
-  <details class="card fold" id="historyFold">
-    <summary class="fold-head">
-      <span class="fold-title">Historial</span>
-      <span class="fold-sub" id="foldSub"></span>
-    </summary>
+  <!-- ===================== cuenta y grupos =====================
+       Todo lo que no es "cuanto he trabajado": quien eres, en que grupo
+       estas y como cambiarlo. En el escritorio vive debajo del ranking. -->
+  <section class="card" id="socialCard">
+    <div class="rank-head">
+      <div>
+        <div class="eyebrow">TU CUENTA</div>
+        <h2>Cuenta y grupo</h2>
+      </div>
+    </div>
+    <div id="socialBody"></div>
+  </section>
 
-    <div class="fold-body">
+  <!-- ===================== calendario ===================== -->
+  <section class="card fold" id="historyFold">
+    <button class="fold-head" type="button" id="foldHead" aria-expanded="true" aria-controls="foldBody">
+      <span class="fold-title">Calendario</span>
+      <span class="fold-sub" id="foldSub"></span>
+    </button>
+
+    <div class="fold-body" id="foldBody">
       <div class="grid-wrap" id="gridWrap">
-        <div class="grid-inner">
+        <div class="grid-inner" id="gridInner">
           <div class="month-row" id="monthRow"></div>
           <div id="gridRows"></div>
         </div>
@@ -964,7 +1091,7 @@
         <input type="file" id="importFile" accept="application/json,.json" class="sr-only" />
       </div>
     </div>
-  </details>
+  </section>
 
  </div>
 </div>
@@ -1007,6 +1134,9 @@ const LEVEL_COLORS = (() => {
   return [0, 1, 2, 3, 4].map((i) => cs.getPropertyValue("--l" + i).trim() || "#2f2f3d");
 })();
 const DAY_NAMES = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+/* En vertical los dias son columnas de 22px: "Mié" no cabe y "M" no
+   distingue martes de miercoles. Dos letras si. */
+const DAY_SHORT = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"];
 const LONG_SESSION_H = 5;   // por encima de esto, al volver preguntamos qué hacer
 const MIN_SAVE_MIN = 0.5;   // sesiones más cortas no se guardan
 
@@ -1908,57 +2038,140 @@ function updateSummary() {
     : "todavía sin registros";
 }
 
+/* El calendario tiene dos orientaciones y son la MISMA rejilla: las mismas
+   celdas, el mismo tooltip y el mismo teclado. Solo cambia quien es fila y
+   quien es columna.
+     - horizontal (movil): filas = dias de la semana, columnas = semanas.
+       Es la tira ancha de siempre, la unica que cabe en un movil.
+     - vertical (escritorio): filas = semanas, columnas = dias. Asi el
+       calendario ocupa una columna estrecha y alta, como en la maqueta. */
+const consultaAncha = window.matchMedia("(min-width: 1120px) and (min-height: 720px)");
+function calendarioVertical() { return consultaAncha.matches; }
+let orientacionPintada = null;
+
 function renderGrid() {
   const today = startOfDay(new Date());
   const todayKey = dateKey(today);
-  const firstWeek = startOfWeek(today);
-  firstWeek.setDate(firstWeek.getDate() - 7 * (WEEKS_TO_SHOW - 1));
 
-  const columns = [];
-  for (let w = 0; w < WEEKS_TO_SHOW; w++) {
-    const days = [];
+  // Cuantas semanas se pintan. En horizontal siempre 26, que es lo que
+  // cabe en la tira de un movil. En vertical, las que quepan en la columna
+  // sin dejarla a medias: en una pantalla de 1080 son unas 29, en una alta
+  // casi el año entero. Nunca menos de 26 (entonces hace scroll) ni mas de
+  // 53, que ya es un año completo.
+  const cuantas = semanasQueCaben();
+  const firstWeek = startOfWeek(today);
+  firstWeek.setDate(firstWeek.getDate() - 7 * (cuantas - 1));
+
+  const semanas = [];
+  for (let w = 0; w < cuantas; w++) {
+    const dias = [];
     for (let d = 0; d < 7; d++) {
       const date = new Date(firstWeek);
       date.setDate(date.getDate() + 7 * w + d);
-      days.push(date);
+      dias.push(date);
     }
-    columns.push(days);
+    semanas.push(dias);
   }
 
-  let lastMonth = null;
-  let monthHtml = '<div style="width:38px"></div>';
-  columns.forEach((days) => {
-    const month = days[0].getMonth();
-    let label = "";
-    if (month !== lastMonth) { label = days[0].toLocaleDateString("es-ES", { month: "short" }); lastMonth = month; }
-    monthHtml += '<div class="month-cell">' + label + "</div>";
-  });
-  $("monthRow").innerHTML = monthHtml;
+  function celda(date, retardo) {
+    const key = dateKey(date);
+    const future = date > today;
+    const mins = future ? 0 : minutesForDay(key);
+    const classes = ["cell"];
+    if (future) classes.push("future");
+    if (key === todayKey) classes.push("today");
+    const style = "animation-delay:" + Math.min(retardo, 500) + "ms;" +
+                  (future ? "" : "background:" + LEVEL_COLORS[levelFor(mins)] + ";");
+    const label = date.toLocaleDateString("es-ES", { day: "numeric", month: "long" }) + ", " + fmtMinutes(mins);
+    // Sólo hoy queda en el orden de tabulación; al resto se llega con las flechas.
+    const tab = future ? "-1" : (key === todayKey ? "0" : "-1");
+    return "<button type=\"button\" class=\"" + classes.join(" ") + "\" data-key=\"" + key + "\"" +
+           ' tabindex="' + tab + '"' +
+           (future ? " disabled aria-hidden=\"true\"" : ' aria-label="' + label + '"') +
+           ' style="' + style + '"></button>';
+  }
 
-  let rowsHtml = "";
-  for (let row = 0; row < 7; row++) {
-    rowsHtml += '<div class="grid-row"><div class="day-label">' + DAY_NAMES[row] + "</div>";
-    columns.forEach((days, col) => {
-      const date = days[row];
-      const key = dateKey(date);
-      const future = date > today;
-      const mins = future ? 0 : minutesForDay(key);
-      const classes = ["cell"];
-      if (future) classes.push("future");
-      if (key === todayKey) classes.push("today");
-      const style = "animation-delay:" + Math.min(col * 9 + row * 5, 500) + "ms;" +
-                    (future ? "" : "background:" + LEVEL_COLORS[levelFor(mins)] + ";");
-      const label = date.toLocaleDateString("es-ES", { day: "numeric", month: "long" }) + ", " + fmtMinutes(mins);
-      // Sólo hoy queda en el orden de tabulación; al resto se llega con las flechas.
-      const tab = future ? "-1" : (key === todayKey ? "0" : "-1");
-      rowsHtml += "<button type=\"button\" class=\"" + classes.join(" ") + "\" data-key=\"" + key + "\"" +
-                  ' tabindex="' + tab + '"' +
-                  (future ? " disabled aria-hidden=\"true\"" : ' aria-label="' + label + '"') +
-                  ' style="' + style + '"></button>';
+  const vertical = calendarioVertical();
+  const wrap = $("gridWrap");
+
+  // Se conserva el sitio donde estabas mirando. Antes cada render() —y hay
+  // uno al volver a la pestaña— devolvia la rejilla al principio, o sea a
+  // hace seis meses, dejando hoy fuera de pantalla.
+  const pegado = vertical
+    ? wrap.scrollTop + wrap.clientHeight >= wrap.scrollHeight - 4
+    : wrap.scrollLeft + wrap.clientWidth >= wrap.scrollWidth - 4;
+  const antesX = wrap.scrollLeft;
+  const antesY = wrap.scrollTop;
+  const giro = orientacionPintada !== null && orientacionPintada !== vertical;
+
+  $("gridInner").className = "grid-inner" + (vertical ? " vert" : "");
+  wrap.className = "grid-wrap" + (vertical ? " vert" : "");
+
+  if (vertical) {
+    $("monthRow").innerHTML =
+      '<div class="cal-gutter"></div>' +
+      DAY_SHORT.map((d) => '<div class="month-cell">' + d + "</div>").join("");
+
+    let lastMonth = null;
+    let rowsHtml = "";
+    semanas.forEach((dias, fila) => {
+      // El mes se rotula en la semana donde cambia. Se mira el domingo y no
+      // el lunes: una semana a caballo entre dos meses pertenece, para
+      // quien la lee, al mes en el que acaba.
+      const mes = dias[6].getMonth();
+      let label = "";
+      if (mes !== lastMonth) { label = dias[6].toLocaleDateString("es-ES", { month: "short" }); lastMonth = mes; }
+      rowsHtml += '<div class="grid-row"><div class="day-label">' + label + "</div>" +
+        dias.map((date, col) => celda(date, fila * 9 + col * 5)).join("") + "</div>";
     });
-    rowsHtml += "</div>";
+    $("gridRows").innerHTML = rowsHtml;
+  } else {
+    let lastMonth = null;
+    let monthHtml = '<div style="width:38px"></div>';
+    semanas.forEach((dias) => {
+      const month = dias[0].getMonth();
+      let label = "";
+      if (month !== lastMonth) { label = dias[0].toLocaleDateString("es-ES", { month: "short" }); lastMonth = month; }
+      monthHtml += '<div class="month-cell">' + label + "</div>";
+    });
+    $("monthRow").innerHTML = monthHtml;
+
+    let rowsHtml = "";
+    for (let row = 0; row < 7; row++) {
+      rowsHtml += '<div class="grid-row"><div class="day-label">' + DAY_NAMES[row] + "</div>";
+      semanas.forEach((dias, col) => { rowsHtml += celda(dias[row], col * 9 + row * 5); });
+      rowsHtml += "</div>";
+    }
+    $("gridRows").innerHTML = rowsHtml;
   }
-  $("gridRows").innerHTML = rowsHtml;
+
+  orientacionPintada = vertical;
+  if (pegado || giro) ponerHoyALaVista();
+  else { wrap.scrollLeft = antesX; wrap.scrollTop = antesY; }
+}
+
+/* Hoy es la ultima celda de la rejilla, asi que llevarla a la vista es
+   irse al final: a la derecha del todo en horizontal, abajo del todo en
+   vertical. */
+/* El lado de la celda sale del ancho de la columna, asi que el alto de
+   fila se deduce de ahi: hueco del mes + su separacion + siete celdas con
+   seis separaciones. */
+const SEMANAS_MAX = 53;
+function semanasQueCaben() {
+  if (!calendarioVertical()) return WEEKS_TO_SHOW;
+  const wrap = $("gridWrap");
+  const gap = parseFloat(getComputedStyle($("historyFold")).getPropertyValue("--cell-gap")) || 4;
+  const util = wrap.clientWidth - 30 - gap * 7;
+  if (util <= 0) return WEEKS_TO_SHOW;
+  const paso = util / 7 + gap;
+  const caben = Math.floor((wrap.clientHeight - 24) / paso);
+  return Math.max(WEEKS_TO_SHOW, Math.min(SEMANAS_MAX, caben));
+}
+
+function ponerHoyALaVista() {
+  const wrap = $("gridWrap");
+  if (calendarioVertical()) wrap.scrollTop = wrap.scrollHeight;
+  else wrap.scrollLeft = wrap.scrollWidth;
 }
 
 function updateTodayCell() {
@@ -2767,8 +2980,9 @@ function renderGente(body, filas) {
       '<div class="person-who">' +
         '<div class="person-name">' + nombre + corona(f.raw) +
           (f.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
-        '<div class="person-sub' + (viva ? " viva" : "") + '" data-presencia="' + escapeHtml(f.raw.member_id) + '">' +
-          escapeHtml(textoPresencia(f.raw)) +
+        '<div class="person-sub' + (viva ? " viva" : "") + '">' +
+          '<span data-presencia="' + escapeHtml(f.raw.member_id) + '">' +
+            escapeHtml(textoPresencia(f.raw)) + "</span>" +
         "</div>" +
       "</div>" +
       '<div class="person-value">' + fmtMinutes(f.today) + "</div>" +
@@ -2798,6 +3012,14 @@ function renderTablaRanking(body, filas) {
     const conMedalla = i < 3 && value > 0;
     const puesto = '<span aria-hidden="true">' + (conMedalla ? medals[i] : "") + "</span>" +
                    '<span class="pos-num">' + (i + 1) + "</span>";
+    // La presencia abre la linea de debajo. Antes solo estaba en la
+    // pestaña Gente: en el ranking veias las horas de alguien sin saber si
+    // estaba trabajando en ese momento, que es la mitad de la gracia.
+    const viva = r.estado === "sesion" || r.estado === "dormido";
+    const presencia = r.mine && session
+      ? "En sesión · " + fmtMinutes(liveMinutes())
+      : textoPresencia(r.raw);
+
     const sub = [];
     if (r.streak > 0) sub.push('<span aria-hidden="true">🔥</span> ' + r.streak + " día" + (r.streak === 1 ? "" : "s"));
     if (metric !== "total") sub.push("total " + fmtMinutes(r.total));
@@ -2807,10 +3029,14 @@ function renderTablaRanking(body, filas) {
     return '<div class="rank-row' + (r.mine ? " me" : "") + '" style="' + anim + '">' +
       '<div class="bar" aria-hidden="true" style="width:' + width + '%"></div>' +
       '<div class="rank-pos' + (conMedalla ? " medal" : "") + '">' + puesto + "</div>" +
+      '<span class="dot-state ' + r.estado + '" aria-hidden="true"></span>' +
       '<div class="rank-who">' +
         '<div class="rank-name">' + escapeHtml(r.nickname) + corona(r.raw) +
           (r.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
-        (sub.length ? '<div class="rank-sub">' + sub.join(" · ") + "</div>" : "") +
+        '<div class="rank-sub' + (viva ? " viva" : "") + '">' +
+          '<span data-presencia="' + escapeHtml(r.raw.member_id) + '">' + escapeHtml(presencia) + "</span>" +
+          (sub.length ? " · " + sub.join(" · ") : "") +
+        "</div>" +
       "</div>" +
       '<div class="rank-value">' + fmtMinutes(value) + "</div>" +
     "</div>";
@@ -2821,7 +3047,7 @@ function renderTablaRanking(body, filas) {
    reconstruir la lista: reconstruir el innerHTML cada 15 s se llevaría por
    delante el foco del teclado, el scroll interno y las animaciones. */
 function refrescarPresencia() {
-  if (!group || !board || vista !== "gente") return;
+  if (!group || !board) return;
   document.querySelectorAll("[data-presencia]").forEach((el) => {
     const m = (board || []).find((x) => x.member_id === el.dataset.presencia);
     if (!m) return;
@@ -2829,14 +3055,89 @@ function refrescarPresencia() {
     const estado = mio && session ? "sesion" : estadoDe(m);
     const texto = mio && session ? "En sesión · " + fmtMinutes(liveMinutes()) : textoPresencia(m);
     if (el.textContent !== texto) el.textContent = texto;
-    el.classList.toggle("viva", estado === "sesion" || estado === "dormido");
-    const punto = el.closest(".person") && el.closest(".person").querySelector(".dot-state");
+    // El estado se pinta igual en Gente y en Ranking: el punto va en la
+    // fila y el verde en la linea de debajo, sea cual sea la pestaña.
+    const linea = el.closest(".person-sub, .rank-sub");
+    if (linea) linea.classList.toggle("viva", estado === "sesion" || estado === "dormido");
+    const fila = el.closest(".person, .rank-row");
+    const punto = fila && fila.querySelector(".dot-state");
     if (punto && !punto.classList.contains(estado)) punto.className = "dot-state " + estado;
   });
 }
 
+/* ---------- tarjeta de cuenta y grupo ----------
+   Los dos chips de la barra de arriba caben en un movil pero no explican
+   nada: un avatar de 24px y un nombre recortado. Aqui va lo mismo con sus
+   palabras, que es lo que pedia la maqueta para la esquina de abajo. */
+function renderSocial() {
+  const body = $("socialBody");
+  if (!body) return;
+  if (!supaReady()) {
+    body.innerHTML = '<div class="rank-empty">Falta conectar la base de datos.</div>';
+    return;
+  }
+
+  const dentro = sesionIniciada();
+  const quien = dentro ? (cuenta.email || cuenta.nombre || "Sesión iniciada") : "Sin cuenta";
+
+  let html =
+    '<div class="soc-row">' +
+      '<span class="mono" aria-hidden="true" style="background:' +
+        (dentro ? "var(--accent-deep)" : "var(--panel-2)") + '">' +
+        escapeHtml(inicialDe(quien)) + "</span>" +
+      '<div class="soc-who">' +
+        '<div class="soc-name">' + escapeHtml(quien) + "</div>" +
+        '<div class="soc-sub">' + (dentro
+          ? "Tu grupo y tus horas te siguen a cualquier dispositivo"
+          : "Con cuenta entras desde el móvil y el ordenador siendo el mismo") + "</div>" +
+      "</div>" +
+      '<button class="btn btn-' + (dentro ? "ghost" : "primary") + '" id="socAcct">' +
+        (dentro ? "Cuenta" : "Entrar") + "</button>" +
+    "</div>";
+
+  if (group) {
+    html +=
+      '<div class="soc-row">' +
+        '<span class="mono" aria-hidden="true" style="background:' + tonoDe(group.name) + '">' +
+          escapeHtml(inicialDe(group.name)) + "</span>" +
+        '<div class="soc-who">' +
+          '<div class="soc-name">' + escapeHtml(group.name) +
+            (group.isPublic ? '<span class="tag">ABIERTO</span>' : "") + "</div>" +
+          '<div class="soc-sub">Eres <b>' + escapeHtml(group.nickname) + "</b>" +
+            (group.isPublic ? "" : " · código " + escapeHtml(group.code)) + "</div>" +
+        "</div>" +
+      "</div>" +
+      '<div class="soc-acts">' +
+        '<button class="btn btn-ghost" id="socNick">Cambiar apodo</button>' +
+        '<button class="btn btn-ghost" id="socSettings">Ajustes</button>' +
+        '<button class="btn btn-ghost" id="socSwitch">Otro grupo</button>' +
+      "</div>";
+  } else {
+    html +=
+      '<div class="soc-row">' +
+        '<span class="mono" aria-hidden="true" style="background:var(--panel-2)">·</span>' +
+        '<div class="soc-who">' +
+          '<div class="soc-name">Sin grupo</div>' +
+          '<div class="soc-sub">Entra en uno abierto, usa un código o crea el tuyo</div>' +
+        "</div>" +
+      "</div>" +
+      '<div class="soc-acts">' +
+        '<button class="btn btn-primary" id="socSwitch">Buscar grupo</button>' +
+      "</div>";
+  }
+
+  body.innerHTML = html;
+  wireButton($("socAcct"), openCuenta);
+  wireButton($("socSwitch"), openGrupos);
+  // Cambiar el apodo abre los ajustes con el campo ya enfocado: es lo que
+  // mas se toca y estaba a dos clics de distancia.
+  wireButton($("socNick"), () => openGroupSettings(true));
+  wireButton($("socSettings"), () => openGroupSettings());
+}
+
 function renderGroupChip() {
   renderCuentaChip();
+  renderSocial();
   const chip = $("groupChip");
   if (!supaReady()) { chip.style.display = "none"; return; }
   chip.style.display = "";
@@ -2874,7 +3175,7 @@ function renderSync() {
     "</div>";
 
   wireButton($("refreshBtn"), () => syncNow(true));
-  wireButton($("groupSettingsBtn"), openGroupSettings);
+  wireButton($("groupSettingsBtn"), () => openGroupSettings());
 }
 
 
@@ -3040,10 +3341,10 @@ function openJoinPublic(groupId, nombre, close) {
       '<div><div class="field-label">Tu apodo</div>' +
         '<input class="text" id="gNick" maxlength="24" placeholder="Alex" value="' + escapeHtml(prefs.nickname || "") + '" /></div>' +
     "</div>" +
-    '<div class="switch-row"><input type="checkbox" id="gPresence" />' +
+    '<div class="switch-row"><input type="checkbox" id="gPresence" checked />' +
       '<span class="switch-text"><b>Compartir mi conexión</b>' +
       '<span>Los demás verán si estás en sesión y cuándo fue tu última conexión. ' +
-      "Puedes dejarlo apagado: tus horas siguen contando en el ranking igual.</span></span></div>" +
+      "Puedes apagarlo: tus horas siguen contando en el ranking igual.</span></span></div>" +
     '<div class="modal-actions">' +
       '<button class="btn btn-ghost" id="gCancel">Cancelar</button>' +
       '<button class="btn btn-primary" id="gJoin">Entrar</button>' +
@@ -3057,9 +3358,11 @@ function openJoinPublic(groupId, nombre, close) {
         try {
           const data = await rpc("dw_join_public", { p_group_id: groupId, p_nickname: $("gNick").value });
           await entrarEnGrupo(data);
-          if ($("gPresence").checked) {
-            try { await rpc("dw_set_presence", { p_member: data.member_id, p_secret: data.secret, p_show: true }); group.showPresence = true; saveGroup(); }
-            catch (e) { /* se queda apagada, no es grave */ }
+          // Ahora se comparte por defecto, asi que lo que hay que enviar es
+          // la renuncia: si lo desmarcan, se apaga.
+          if (!$("gPresence").checked) {
+            try { await rpc("dw_set_presence", { p_member: data.member_id, p_secret: data.secret, p_show: false }); group.showPresence = false; saveGroup(); }
+            catch (e) { /* se queda encendida, se puede apagar en Ajustes */ }
           }
           cerrar();
           if (close) close();
@@ -3321,7 +3624,7 @@ function renderCuentaChip() {
   }
 }
 
-function openGroupSettings() {
+function openGroupSettings(focoNick) {
   const publico = !!group.isPublic;
   const dueno = !!group.isOwner;
 
@@ -3419,6 +3722,7 @@ function openGroupSettings() {
       document.querySelectorAll(".modal input.text").forEach((i) =>
         i.addEventListener("keydown", (e) => { if (e.key === "Enter") guardar(); }));
       wireButton($("sSave"), guardar);
+      if (focoNick === true) { const c = $("sNick"); c.focus(); c.select(); }
     }
   );
 }
@@ -3618,15 +3922,49 @@ loadAsync();
 requestPersistence();
 renderRanking();
 
-// El historial arranca plegado en móvil y abierto en pantallas grandes,
-// y a partir de ahí manda lo que el usuario decida.
+/* El calendario arranca plegado en movil y abierto en pantallas grandes, y
+   a partir de ahi manda lo que decida el usuario. En el escritorio de tres
+   columnas no se pliega: alli es una columna entera, y dejarla plegar
+   abriria un hueco vacio de media pantalla. */
 const fold = $("historyFold");
-fold.open = (typeof prefs.fold === "boolean") ? prefs.fold : innerWidth >= 760;
-fold.addEventListener("toggle", () => {
-  prefs.fold = fold.open;
+function aplicarPliegue() {
+  const abierto = calendarioVertical()
+    ? true
+    : ((typeof prefs.fold === "boolean") ? prefs.fold : innerWidth >= 760);
+  fold.classList.toggle("cerrado", !abierto);
+  $("foldHead").setAttribute("aria-expanded", String(abierto));
+  return abierto;
+}
+aplicarPliegue();
+wireButton($("foldHead"), () => {
+  if (calendarioVertical()) return;
+  const abierto = fold.classList.contains("cerrado");
+  fold.classList.toggle("cerrado", !abierto);
+  $("foldHead").setAttribute("aria-expanded", String(abierto));
+  prefs.fold = abierto;
   savePrefs();
-  if (fold.open) { const w = $("gridWrap"); w.scrollLeft = w.scrollWidth; }
+  if (abierto) ponerHoyALaVista();
 });
+
+/* Al cambiar de tamaño hay que repintar el calendario: al cruzar el umbral
+   de las tres columnas cambia de orientacion —girar la rejilla solo con CSS
+   no se puede, la cabecera y las etiquetas de fila son distintas— y al
+   cambiar de alto cambia cuantas semanas caben.
+
+   Va por el evento resize y no solo por el de la media query porque hay
+   entornos donde el segundo no llega (el navegador integrado del editor,
+   por ejemplo, cambia el viewport sin dispararlo) y el calendario se
+   quedaba en horizontal dentro de una columna vertical. */
+let repintarTimer = null;
+function repintarCalendario() {
+  clearTimeout(repintarTimer);
+  repintarTimer = setTimeout(() => {
+    aplicarPliegue();
+    renderGrid();
+  }, 180);
+}
+consultaAncha.addEventListener("change", repintarCalendario);
+window.addEventListener("resize", repintarCalendario);
 
 if (group && supaReady()) flushPendingLeaves();
 arrancarVigilante();
@@ -3643,9 +3981,8 @@ if (recogerVuelta()) {
 }
 recuperarGrupo().then(() => { if (group && supaReady()) ciclo({ forzar: true, conDias: true }); });
 
-// scroll al final para que hoy quede a la vista en móvil
-const wrap = $("gridWrap");
-wrap.scrollLeft = wrap.scrollWidth;
+// hoy es lo ultimo de la rejilla: se deja a la vista de entrada
+ponerHoyALaVista();
 
 // delegación de eventos en la rejilla: un único listener para 182 celdas
 const rows = $("gridRows");
