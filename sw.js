@@ -6,7 +6,7 @@
    - iconos y manifiesto → caché primero (no cambian)
    Subir CACHE_VERSION invalida lo viejo en la siguiente visita. */
 
-const CACHE_VERSION = "deepwork-v14";
+const CACHE_VERSION = "deepwork-v15";
 const ASSETS = [
   "./",
   "./index.html",

@@ -776,6 +776,23 @@
     border-radius: 5px; padding: 2px 5px; flex-shrink: 0;
   }
 
+  /* Un grupo de una persona deja media tarjeta en blanco, y lo que hace
+     falta ahi no es relleno: es el codigo para que entre alguien. */
+  .invitar {
+    margin: auto 0 4px; padding: clamp(16px, 1.6vw, 24px) 16px;
+    text-align: center; border-radius: 16px;
+    border: 1px dashed var(--line-2); background: rgba(255,255,255,.02);
+    animation: cardIn .5s var(--ease) both;
+  }
+  .invitar-titulo { font-size: 13.5px; font-weight: 650; }
+  .invitar-sub { font-size: 12px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+  .invitar-codigo {
+    font-family: var(--font-dial);
+    font-size: clamp(26px, 2.2vw, 40px); font-weight: 500;
+    letter-spacing: .16em; text-indent: .16em;
+    color: var(--text); margin: 14px 0 12px;
+  }
+
   .stale-note {
     font-size: 11px; color: var(--dim); text-align: center;
     padding: 8px 0 2px;
@@ -909,10 +926,13 @@
       /* Las laterales crecen con el ancho pero con techo: pasado cierto
          punto, ensancharlas solo estira el texto. Lo que sobra va al
          centro, que es lo que se mira. */
-      grid-template-columns:
-        clamp(272px, 18vw, 372px)
-        minmax(0, 1fr)
-        clamp(306px, 22.5vw, 440px);
+      --lado-izq: clamp(272px, 19vw, 372px);
+      --lado: min(
+        calc(100dvh - 128px),
+        1100px,
+        calc(100vw - 410px - clamp(272px, 19vw, 372px))
+      );
+      grid-template-columns: var(--lado-izq) var(--lado) minmax(310px, 1fr);
       grid-template-rows: auto auto minmax(0, 1fr) auto;
       column-gap: clamp(16px, 1.3vw, 26px);
       row-gap: clamp(12px, 1.1vh, 18px);
@@ -958,36 +978,65 @@
     /* --- centro: el reloj, cuadrado --- */
     .stage {
       grid-column: 2; grid-row: 3 / span 2;
-      align-self: center; justify-self: center;
+      align-self: center; justify-self: stretch;
       aspect-ratio: 1;
-      /* Cuadrado de verdad: manda el lado que se acabe antes, el ancho de
-         la columna o el alto de la ventana. */
-      width: min(100%, calc(100dvh - 128px));
+      /* La columna ya mide el cuadrado: aqui solo hay que llenarla. */
+      width: 100%;
       justify-content: center;
-      gap: clamp(18px, 2.4vh, 36px);
+      container-type: inline-size;
+      gap: clamp(11px, 2.6cqw, 34px);
       padding: clamp(26px, 2.6vw, 46px);
       border-radius: clamp(28px, 2.6vw, 46px);
     }
-    .dial-wrap { width: min(71%, 680px, calc(100dvh - 440px)); }
+    /* El aro se saca de .dial-wrap y se ancla a la tarjeta. Asi
+       .dial-wrap deja de reservar un cuadrado y se queda con lo que de
+       verdad lleva dentro: el rotulo, la cifra y el objetivo. */
+    .stage { position: relative; }
+    .dial-wrap {
+      position: static;
+      width: 100%; height: auto; aspect-ratio: auto;
+      flex: 0 0 auto;
+    }
+    .dial {
+      position: absolute;
+      inset: clamp(26px, 2.6vw, 46px);
+      width: auto; height: auto;
+    }
+    .dial-track, .dial-arc { stroke-width: 6; }
+    .dial-face { padding: 0 14%; }
+
+    /* El halo iba pegado a .dial-wrap, que ya no es el circulo. */
+    body.running .dial-wrap::after { content: none; }
+    body.running .stage::after {
+      content: ""; position: absolute;
+      inset: clamp(32px, 3.2vw, 58px);
+      border-radius: 50%; pointer-events: none;
+      box-shadow: 0 0 90px rgba(125,151,255,.28);
+      animation: halo 5.5s ease-in-out infinite;
+    }
+
     .dial-face { padding: 0 12%; gap: clamp(6px, .8vh, 14px); }
-    .dial-state { font-size: clamp(10.5px, .75vw, 14px); letter-spacing: .2em; }
-    .dial-clock { font-size: clamp(46px, 5.6vw, 116px); font-weight: 400; }
-    .dial-clock.long { font-size: clamp(34px, 3.9vw, 80px); }
-    .dial-goal { font-size: clamp(12px, .92vw, 17px); }
+    .dial-state { font-size: clamp(10.5px, 1.65cqw, 15px); letter-spacing: .2em; }
+    .dial-clock { font-size: clamp(44px, 15cqw, 134px); font-weight: 400; }
+    .dial-clock.long { font-size: clamp(32px, 10.4cqw, 93px); }
+    .dial-goal { font-size: clamp(12px, 1.95cqw, 18px); }
     .dial-track, .dial-arc { stroke-width: 7.5; }
 
-    .stage-actions { max-width: min(74%, 480px); gap: clamp(8px, .8vw, 14px); }
+    /* Estrechas para que sus esquinas no crucen el aro, que ahora es el
+       borde de la tarjeta. La cuerda del circulo a esa altura da de
+       sobra; el limite lo pone la tarjeta pequeña. */
+    .stage-actions { max-width: min(56%, 470px); gap: clamp(8px, .8vw, 14px); }
     .stage-actions .btn {
-      min-height: clamp(50px, 5.4vh, 68px);
-      font-size: clamp(14px, 1.05vw, 19px);
-      border-radius: clamp(14px, 1.2vw, 20px);
+      min-height: clamp(46px, 6.2cqw, 68px);
+      font-size: clamp(13px, 2.05cqw, 19px);
+      border-radius: clamp(14px, 1.6cqw, 20px);
     }
-    .mini-stats { max-width: min(84%, 540px); gap: clamp(10px, .9vw, 16px); }
-    .mini { padding: clamp(9px, 1.3vh, 18px) 8px; border-radius: clamp(12px, 1.1vw, 18px); }
-    .mini-value { font-size: clamp(15px, 1.3vw, 24px); }
-    .mini-label { font-size: clamp(10px, .72vw, 13px); margin-top: 3px; }
-    .stage-extra { min-height: clamp(34px, 3.4vh, 46px); }
-    .stage-extra .link-btn { font-size: clamp(12px, .88vw, 15px); }
+    .mini-stats { max-width: min(64%, 560px); gap: clamp(10px, .9vw, 16px); }
+    .mini { padding: clamp(9px, 1.5cqw, 18px) 8px; border-radius: clamp(12px, 1.5cqw, 18px); }
+    .mini-value { font-size: clamp(15px, 2.6cqw, 25px); }
+    .mini-label { font-size: clamp(10px, 1.4cqw, 13px); margin-top: 3px; }
+    .stage-extra { min-height: clamp(28px, 3.9cqw, 46px); }
+    .stage-extra .link-btn { font-size: clamp(12px, 1.7cqw, 16px); }
 
     /* --- derecha: ranking arriba, cuenta y grupos abajo --- */
     #rankCard {
@@ -1002,7 +1051,7 @@
     #rankCard .view-tab { padding: 8px clamp(10px, .8vw, 16px); min-height: clamp(34px, 3.4vh, 42px);
                           font-size: clamp(12.5px, .92vw, 15px); }
     #rankCard .metric-tab { padding: 6px clamp(9px, .7vw, 14px); font-size: clamp(11.5px, .85vw, 14px); }
-    #rankBody { overflow-y: auto; min-height: 0; flex: 1; }
+    #rankBody { overflow-y: auto; min-height: 0; flex: 1; display: flex; flex-direction: column; }
     #rankCard .rank-row, #rankCard .person {
       padding: clamp(11px, 1.2vh, 17px) clamp(12px, 1vw, 16px);
       border-radius: clamp(12px, 1vw, 16px);
@@ -1034,6 +1083,7 @@
       min-width: 76px;
     }
     #socialCard .soc-row .btn { min-height: clamp(38px, 3.8vh, 48px); font-size: clamp(12.5px, .9vw, 15px); }
+
 
     @media (max-height: 980px) {
       #socialCard { padding: 12px 16px 13px; }
@@ -3054,6 +3104,33 @@ function renderRanking() {
   renderSync();
 }
 
+/* Con el grupo casi vacio, la mitad de la tarjeta se queda en blanco. Lo
+   que hace falta en ese hueco no es relleno, es lo unico que arregla el
+   problema: el codigo para que entre alguien. */
+function panelInvitacion(cuantos) {
+  if (!group || cuantos > 3) return "";
+  const solo = cuantos <= 1;
+  if (group.isPublic) {
+    return '<div class="invitar">' +
+      '<div class="invitar-titulo">' + (solo ? "Aquí sólo estás tú" : "Sois pocos todavía") + "</div>" +
+      '<div class="invitar-sub">Es un grupo abierto: cualquiera puede entrar desde<br>' +
+      "<b>Buscar grupo</b> sin necesidad de código.</div>" +
+      '<div class="rank-cta"><button class="btn btn-ghost" id="invCompartir">Ver cómo se ve</button></div>' +
+      "</div>";
+  }
+  return '<div class="invitar">' +
+    '<div class="invitar-titulo">' + (solo ? "Aquí sólo estás tú" : "Sois pocos todavía") + "</div>" +
+    '<div class="invitar-sub">Pasa este código y competid por horas.</div>' +
+    '<div class="invitar-codigo">' + escapeHtml(group.code) + "</div>" +
+    '<div class="rank-cta"><button class="btn btn-ghost" id="invCopiar">Copiar código</button></div>' +
+    "</div>";
+}
+
+function cablearInvitacion() {
+  wireButton($("invCopiar"), copyCode);
+  wireButton($("invCompartir"), openGrupos);
+}
+
 /* ---- pestaña Gente: quién está ahora ---- */
 function renderGente(body, filas) {
   // Ordena por presencia, no por minutos: quien empieza a trabajar sube,
@@ -3101,7 +3178,9 @@ function renderGente(body, filas) {
   body.innerHTML = buscador +
     '<div class="people ' + densidad + '">' + html + "</div>" +
     (rancio() && boardAt ? '<div class="stale-note">Datos de ' + textoHace(Math.floor((Date.now() - boardAt) / 1000)) + "</div>" : "") +
-    (visibles.length ? "" : '<div class="rank-empty">Nadie con ese nombre.</div>');
+    (visibles.length ? "" : '<div class="rank-empty">Nadie con ese nombre.</div>') +
+    (filtro ? "" : panelInvitacion(orden.length));
+  cablearInvitacion();
 
   const campo = $("peopleFilter");
   if (campo) {
@@ -3139,6 +3218,8 @@ function renderTablaRanking(body, filas) {
       '<div class="bar" aria-hidden="true" style="width:' + width + '%"></div>' +
       '<div class="rank-pos' + (conMedalla ? " medal" : "") + '">' + puesto + "</div>" +
       '<span class="dot-state ' + r.estado + '" aria-hidden="true"></span>' +
+      '<span class="mono" aria-hidden="true" style="background:' + tonoDe(r.nickname) + '">' +
+        escapeHtml(inicialDe(r.nickname)) + "</span>" +
       '<div class="rank-who">' +
         '<div class="rank-name">' + escapeHtml(r.nickname) + corona(r.raw) +
           (r.mine ? '<span class="you">TÚ</span>' : "") + "</div>" +
@@ -3149,7 +3230,8 @@ function renderTablaRanking(body, filas) {
       "</div>" +
       '<div class="rank-value">' + fmtMinutes(value) + "</div>" +
     "</div>";
-  }).join("") + "</div>";
+  }).join("") + "</div>" + panelInvitacion(orden.length);
+  cablearInvitacion();
 }
 
 /* Refresco local de las etiquetas de tiempo, sin tocar la red y sin
