@@ -51,6 +51,9 @@
     --accent-deep: #3f59dd;
     --good: #3ddc97;
     --veil: rgba(14,14,20,.72);
+    /* Las aletas del reloj van mas oscuras que la tarjeta: es lo que las
+       separa del fondo sin necesidad de borde. */
+    --flip-bg: #15151c;
     /* Escala de la rejilla. Es la única fuente: la leyenda y el JS la leen
        de aquí, para que no haya que cambiar el color en tres sitios. */
     --l0: #3a3a4a;
@@ -216,24 +219,86 @@
   .dial-face {
     position: relative; z-index: 1; text-align: center;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
-    padding: 0 16%;
+    /* El reloj de aletas ocupa mucho mas ancho que la cifra suelta que
+       habia antes; el hueco lateral baja de un 16% a un 8%. */
+    padding: 0 8%;
+    width: 100%;
   }
   .dial-state {
     font-size: 10.5px; letter-spacing: .16em; font-weight: 700;
     color: var(--dim); transition: color .4s var(--ease);
   }
   body.running .dial-state { color: var(--accent); }
-  .dial-clock {
-    font-family: var(--font-dial);
-    font-size: clamp(44px, 15vw, 70px);
-    font-weight: 500; letter-spacing: -.02em;
-    font-variant-numeric: tabular-nums; line-height: 1;
-    opacity: .55; transition: opacity .4s var(--ease);
-    white-space: nowrap;
+  /* ---------- reloj de aletas ----------
+     Seis aletas (horas, minutos, segundos) y dos separadores. Cada aleta
+     son cuatro capas: las dos mitades quietas que se ven en reposo y dos
+     hojas que solo aparecen durante el giro — la de arriba cae con el
+     digito viejo y la de abajo sube con el nuevo. Es el mecanismo de un
+     reloj de aletas de verdad; una sola pieza girando no engaña a nadie.
+
+     Todo se mide en cqw, o sea en porcentaje del ancho de la fila: asi el
+     reloj entra igual en los 245px que quedan dentro del anillo de un
+     movil que en los 636 de un monitor, sin una sola medida a mano. */
+  .flip-reloj {
+    container-type: inline-size;
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; gap: 1.2cqw;
+    opacity: .78; transition: opacity .4s var(--ease);
   }
-  /* H:MM:SS son ocho caracteres: no caben al tamaño de MM:SS */
-  .dial-clock.long { font-size: clamp(30px, 10.2vw, 50px); }
-  body.running .dial-clock { opacity: 1; }
+  body.running .flip-reloj { opacity: 1; }
+
+  .flip {
+    position: relative;
+    flex: 1 1 0; min-width: 0;
+    aspect-ratio: .74;
+    border-radius: 1.7cqw;
+    perspective: 42cqw;
+    font-family: var(--font-dial);
+    font-size: 13.5cqw; font-weight: 500; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    box-shadow: 0 .4cqw 1.6cqw rgba(0,0,0,.4);
+  }
+
+  .flip-mitad, .flip-hoja {
+    position: absolute; left: 0; right: 0; height: 50%;
+    overflow: hidden; background: var(--flip-bg);
+    backface-visibility: hidden;
+  }
+  /* El glifo mide el alto entero de la aleta y cada mitad recorta la suya:
+     asi las dos partes del numero encajan al milimetro. */
+  .flip-mitad > span, .flip-hoja > span {
+    position: absolute; left: 0; right: 0; height: 200%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .f-arr { top: 0; border-radius: 1.7cqw 1.7cqw 0 0; }
+  .f-aba { bottom: 0; border-radius: 0 0 1.7cqw 1.7cqw; }
+  .f-arr > span { top: 0; }
+  .f-aba > span { bottom: 0; }
+
+  .flip-hoja { z-index: 2; display: none; }
+  .flip.girando .flip-hoja { display: block; }
+  .flip-hoja.f-arr { transform-origin: bottom; animation: hojaCae .26s cubic-bezier(.45,.05,.75,.9) forwards; }
+  .flip-hoja.f-aba { transform-origin: top; transform: rotateX(90deg);
+                     animation: hojaSube .28s cubic-bezier(.3,.5,.5,1) .26s forwards; }
+  @keyframes hojaCae  { to { transform: rotateX(-90deg); } }
+  @keyframes hojaSube { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
+
+  /* La raja del medio va por encima de las hojas: en un reloj de verdad
+     es una ranura, no una junta que se mueva. */
+  .flip::after {
+    content: ""; position: absolute; left: 0; right: 0;
+    top: calc(50% - .18cqw); height: .36cqw; min-height: 1px;
+    background: rgba(0,0,0,.5); z-index: 3; pointer-events: none;
+  }
+
+  .flip-dosp {
+    flex: 0 0 3.2cqw;
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 4.6cqw;
+  }
+  .flip-dosp i { width: 1.5cqw; height: 1.5cqw; min-width: 2px; min-height: 2px;
+                 border-radius: 99px; background: var(--dim); }
   .dial-goal {
     font-size: 12px; color: var(--dim);
     font-variant-numeric: tabular-nums; line-height: 1.35;
@@ -282,7 +347,7 @@
     border-color: rgba(173,173,189,.24);
     box-shadow: 0 0 0 1px rgba(255,255,255,.04), 0 10px 40px rgba(0,0,0,.28);
   }
-  body.paused .dial-clock { opacity: .72; }
+  body.paused .flip-reloj { opacity: .72; }
   body.paused .dial-state { color: var(--muted); }
   /* :not(.done) para no pisar el verde del objetivo cumplido, que tiene
      la misma especificidad y perdía por ir antes en el fichero. */
@@ -1022,7 +1087,7 @@
       width: auto; height: auto;
     }
     .dial-track, .dial-arc { stroke-width: 6; }
-    .dial-face { padding: 0 14%; }
+    .dial-face { padding: 0 12%; }
 
     /* El halo iba pegado a .dial-wrap, que ya no es el circulo. */
     body.running .dial-wrap::after { content: none; }
@@ -1036,8 +1101,6 @@
 
     .dial-face { padding: 0 12%; gap: clamp(6px, .8vh, 14px); }
     .dial-state { font-size: clamp(10.5px, 1.65cqw, 15px); letter-spacing: .2em; }
-    .dial-clock { font-size: clamp(44px, 15cqw, 134px); font-weight: 400; }
-    .dial-clock.long { font-size: clamp(32px, 10.4cqw, 93px); }
     .dial-goal { font-size: clamp(12px, 1.95cqw, 18px); }
     .dial-track, .dial-arc { stroke-width: 7.5; }
 
@@ -1182,7 +1245,12 @@
       </svg>
       <div class="dial-face">
         <div class="dial-state" id="dialState">LISTO</div>
-        <div class="dial-clock" id="timerClock">0m</div>
+        <!-- Las aletas las monta el JS: seis digitos y dos separadores.
+             Van marcadas como decorativas y el texto legible para un
+             lector de pantalla va en el span de al lado, sin aria-live:
+             un reloj que se anuncia cada segundo es inservible. -->
+        <div class="flip-reloj" id="timerClock" aria-hidden="true"></div>
+        <span class="sr-only" id="timerClockSr"></span>
         <button class="dial-goal" id="goalText" aria-label="Cambiar el objetivo diario">—</button>
       </div>
     </div>
@@ -2124,19 +2192,74 @@ function renderTimer() {
 
 /* Parado, la cifra grande es EL TOTAL DE HOY: un 00:00 muerto desperdicia
    el elemento principal de la pantalla. Corriendo, el cronómetro. */
-function pintarReloj() {
-  const clock = $("timerClock");
-  if (session) {
-    const secs = Math.max(0, Math.floor(sessionMs() / 1000));
-    const largo = secs >= 3600;
-    clock.textContent = largo
-      ? fmtClock(secs)
-      : pad(Math.floor(secs / 60)) + ":" + pad(secs % 60);
-    clock.classList.toggle("long", largo);
-  } else {
-    clock.textContent = fmtMinutes(minutesForDay(lastTodayKey));
-    clock.classList.remove("long");
+/* ------------------------- reloj de aletas -------------------------- */
+
+const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)");
+let flipAletas = [];
+let relojEstrenado = false;
+
+/* Se monta una vez. Reconstruirlo en cada pintado mataria la animacion a
+   media asta y tiraria el estado de cada aleta. */
+function montarReloj() {
+  const aleta = '<span class="flip" data-d="0">' +
+      '<span class="flip-mitad f-arr"><span>0</span></span>' +
+      '<span class="flip-mitad f-aba"><span>0</span></span>' +
+      '<span class="flip-hoja  f-arr"><span>0</span></span>' +
+      '<span class="flip-hoja  f-aba"><span>0</span></span>' +
+    "</span>";
+  const dosPuntos = '<span class="flip-dosp"><i></i><i></i></span>';
+  const cont = $("timerClock");
+  cont.innerHTML = aleta + aleta + dosPuntos + aleta + aleta + dosPuntos + aleta + aleta;
+  flipAletas = [].slice.call(cont.querySelectorAll(".flip"));
+}
+
+/* Cambiar un digito: la hoja de arriba cae con el viejo mientras la mitad
+   de arriba ya lleva el nuevo detras; despues la hoja de abajo sube con
+   el nuevo y, al acabar, la mitad de abajo se pone al dia. */
+function ponerAleta(el, nuevo, animar) {
+  if (!el || el.dataset.d === nuevo) return;
+  const viejo = el.dataset.d;
+  el.dataset.d = nuevo;
+  const mArr = el.children[0].firstElementChild;
+  const mAba = el.children[1].firstElementChild;
+  const hArr = el.children[2].firstElementChild;
+  const hAba = el.children[3].firstElementChild;
+
+  if (!animar || sinMovimiento.matches) {
+    mArr.textContent = nuevo;
+    mAba.textContent = nuevo;
+    return;
   }
+
+  hArr.textContent = viejo;
+  hAba.textContent = nuevo;
+  mArr.textContent = nuevo;
+  el.classList.remove("girando");
+  void el.offsetWidth;          // reinicia la animacion si venia girando
+  el.classList.add("girando");
+  clearTimeout(el.tempo);
+  el.tempo = setTimeout(() => {
+    mAba.textContent = nuevo;
+    el.classList.remove("girando");
+  }, 560);
+}
+
+/* Parado, el reloj marca EL TOTAL DE HOY: un 00:00:00 muerto desperdicia
+   el elemento principal de la pantalla. Corriendo, la sesion. */
+function pintarReloj() {
+  const secs = session
+    ? Math.max(0, Math.floor(sessionMs() / 1000))
+    : Math.max(0, Math.round(minutesForDay(lastTodayKey) * 60));
+  const horas = Math.min(99, Math.floor(secs / 3600));
+  const cifras = pad(horas) + pad(Math.floor((secs % 3600) / 60)) + pad(secs % 60);
+
+  // Sin sesion no hay nada que girar: la cifra de hoy no cambia sola.
+  const animar = relojEstrenado && !!session && !sessionPausada();
+  for (let i = 0; i < 6; i++) ponerAleta(flipAletas[i], cifras.charAt(i), animar);
+  relojEstrenado = true;
+
+  const sr = $("timerClockSr");
+  if (sr) sr.textContent = (session ? "Sesión: " : "Hoy: ") + fmtMinutes(secs / 60);
 }
 
 function updateStats() {
@@ -4174,6 +4297,7 @@ function openLeave() {
 loadSync();
 if (Object.keys(doc.days).length) persist();   // migra el formato antiguo a las claves nuevas
 checkRecovery();
+montarReloj();
 render();
 if (session && !sessionPausada()) { startTicking(); acquireWakeLock(); }
 loadAsync();
