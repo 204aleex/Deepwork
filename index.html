@@ -2217,13 +2217,31 @@ function montarReloj() {
    de arriba ya lleva el nuevo detras; despues la hoja de abajo sube con
    el nuevo y, al acabar, la mitad de abajo se pone al dia. */
 function ponerAleta(el, nuevo, animar) {
-  if (!el || el.dataset.d === nuevo) return;
-  const viejo = el.dataset.d;
-  el.dataset.d = nuevo;
+  if (!el) return;
+  const aMedias = el.classList.contains("girando");
+  if (el.dataset.d === nuevo && !aMedias) return;
+
   const mArr = el.children[0].firstElementChild;
   const mAba = el.children[1].firstElementChild;
   const hArr = el.children[2].firstElementChild;
   const hAba = el.children[3].firstElementChild;
+
+  /* Un giro a medias se cierra SIEMPRE antes de tocar nada. Sin esto, al
+     parar la sesion quedaba vivo el temporizador del giro en curso y
+     medio segundo despues escribia el digito viejo en la mitad de abajo:
+     la aleta se quedaba partida, con un numero arriba y otro abajo. Pasa
+     porque parar cae en la rama sin animacion, que no recogia las hojas
+     de un giro que ya estaba en el aire. */
+  if (aMedias) {
+    clearTimeout(el.tempo);
+    el.classList.remove("girando");
+    mArr.textContent = el.dataset.d;
+    mAba.textContent = el.dataset.d;
+  }
+  if (el.dataset.d === nuevo) return;
+
+  const viejo = el.dataset.d;
+  el.dataset.d = nuevo;
 
   if (!animar || sinMovimiento.matches) {
     mArr.textContent = nuevo;
@@ -2234,10 +2252,8 @@ function ponerAleta(el, nuevo, animar) {
   hArr.textContent = viejo;
   hAba.textContent = nuevo;
   mArr.textContent = nuevo;
-  el.classList.remove("girando");
-  void el.offsetWidth;          // reinicia la animacion si venia girando
+  void el.offsetWidth;          // reinicia la animacion desde cero
   el.classList.add("girando");
-  clearTimeout(el.tempo);
   el.tempo = setTimeout(() => {
     mAba.textContent = nuevo;
     el.classList.remove("girando");
