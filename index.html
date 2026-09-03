@@ -192,7 +192,16 @@
     aspect-ratio: 1;
     display: grid; place-items: center;
   }
-  .dial { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+  /* El aro es decoración: lleva aria-hidden y nada dentro se pulsa. Sin
+     pointer-events:none se tragaba los clics de todo lo que hubiera
+     debajo, porque al estar posicionado se pinta —y por tanto recibe el
+     puntero— por encima de los elementos estáticos. En el escritorio,
+     donde el aro cubre la tarjeta entera, eso dejaba muertos "Añadir
+     tiempo a mano" y "Descartar sesión". */
+  .dial {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    transform: rotate(-90deg); pointer-events: none;
+  }
   .dial-track, .dial-arc {
     fill: none; stroke-width: 9; stroke-linecap: round;
   }
@@ -303,14 +312,15 @@
     font-size: 12px; color: var(--dim);
     font-variant-numeric: tabular-nums; line-height: 1.35;
     background: none; border: none; font-family: inherit;
-    padding: 6px 10px; margin: -4px 0; border-radius: 8px;
+    /* La zona sensible llega a 44px sin mover nada: el relleno la agranda
+       y el margen negativo devuelve el hueco que ocupa, porque el texto
+       vive dentro del anillo y crecer de verdad descuadraría el centro.
+       Antes esto lo hacía un ::after que sobresalía, y ese no sobrevive al
+       recorte que necesita la onda. */
+    padding: 14px; margin: -12px -4px; border-radius: 12px;
     cursor: pointer; touch-action: manipulation;
     transition: color .2s var(--ease), background .2s var(--ease);
   }
-  .dial-goal { position: relative; }
-  /* La zona sensible llega a 44px sin mover nada: el texto vive dentro del
-     anillo y agrandarlo de verdad descuadraria el centro. */
-  .dial-goal::after { content: ""; position: absolute; inset: -8px -4px; }
   .dial-goal:active { transform: scale(.97); }
   .dial-goal:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -398,6 +408,14 @@
   .btn-primary { background: var(--accent-deep); color: #fff; }
   .btn-stop { background: #f2f2f5; color: #0c0c0e; }
   .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line-2); font-weight: 500; }
+
+  /* Contrato de la onda: quien la recibe tiene que ser su bloque
+     contenedor y recortarla. Va en una sola clase que pone wireButton()
+     al cablear, y no repetida en cada clase de botón, porque ese es el
+     único sitio que crea ondas. De las seis clases que pasan por allí
+     sólo .btn lo cumplía; las otras cinco mandaban la onda a la otra
+     punta de la pantalla, anclada al primer ancestro posicionado. */
+  .onda-host { position: relative; overflow: hidden; }
 
   /* onda al pulsar */
   .ripple {
@@ -888,12 +906,15 @@
   @keyframes rowIn { from { opacity: 0; transform: translateY(8px); } }
   .rank-row.me { background: rgba(91,124,255,.09); border-color: rgba(91,124,255,.26); }
 
-  /* barra proporcional al mejor del grupo */
+  /* Barra proporcional al mejor del grupo. Es decoración, así que no
+     recibe puntero: hasta ahora sólo la desactivaba el z-index de la
+     regla de abajo, y cualquier hijo nuevo que se saliera de ese selector
+     habría quedado tapado igual que pasó con el aro. */
   .rank-row .bar {
     position: absolute; left: 0; top: 0; bottom: 0; width: 0;
     background: linear-gradient(90deg, rgba(54,81,212,.30), rgba(91,124,255,.06));
     transition: width .8s var(--ease);
-    z-index: 0;
+    z-index: 0; pointer-events: none;
   }
   .rank-row > *:not(.bar) { position: relative; z-index: 1; }
 
@@ -1655,19 +1676,35 @@ function toast(message, isWarning) {
 
 function ripple(event) {
   const btn = event.currentTarget;
+  // Red por debajo del contrato: si algo reescribio className y se llevo
+  // la marca, se repone antes de medir. Sale gratis —position:relative no
+  // mueve nada— y evita que un descuido mande la onda a otra pantalla.
+  if (!btn.classList.contains("onda-host")) btn.classList.add("onda-host");
   const rect = btn.getBoundingClientRect();
   const size = Math.max(rect.width, rect.height);
+  // Un clic de teclado (Enter o Espacio sobre el botón enfocado) llega sin
+  // coordenadas: clientX y clientY valen cero y la onda salía disparada
+  // hacia arriba a la izquierda. detail es el número de clics del ratón,
+  // cero cuando no hubo puntero: entonces sale del centro.
+  const conPuntero = event.detail > 0;
+  const x = conPuntero ? event.clientX : rect.left + rect.width / 2;
+  const y = conPuntero ? event.clientY : rect.top + rect.height / 2;
   const span = document.createElement("span");
   span.className = "ripple";
   span.style.width = span.style.height = size + "px";
-  span.style.left = (event.clientX - rect.left - size / 2) + "px";
-  span.style.top = (event.clientY - rect.top - size / 2) + "px";
+  span.style.left = (x - rect.left - size / 2) + "px";
+  span.style.top = (y - rect.top - size / 2) + "px";
   btn.appendChild(span);
   setTimeout(() => span.remove(), 600);
 }
 
 function wireButton(el, handler) {
   if (!el) return;
+  // La onda se dibuja DENTRO del botón, así que el botón tiene que
+  // anclarla y recortarla. Se marca aquí, que es por donde pasan todos
+  // los botones con onda, en vez de confiar en que cada clase de botón se
+  // acuerde de hacerlo por su cuenta.
+  el.classList.add("onda-host");
   el.addEventListener("click", (e) => { ripple(e); handler(e); });
 }
 
@@ -3959,13 +3996,15 @@ function renderCuentaChip() {
   const chip = $("acctChip");
   if (!supaReady()) { chip.style.display = "none"; return; }
   chip.style.display = "";
-  if (sesionIniciada()) {
+  // classList y no className: reescribirlo entero se llevaba por delante
+  // la marca que pone wireButton para anclar la onda.
+  const dentro = sesionIniciada();
+  chip.classList.toggle("dentro", dentro);
+  if (dentro) {
     const quien = cuenta.email || cuenta.nombre || "?";
-    chip.className = "acct-chip dentro";
     chip.innerHTML = '<span class="avatar">' + escapeHtml(quien.trim()[0].toUpperCase()) + "</span>";
     chip.setAttribute("aria-label", "Cuenta: " + quien);
   } else {
-    chip.className = "acct-chip";
     chip.textContent = "Entrar";
     chip.setAttribute("aria-label", "Entrar con Google");
   }
