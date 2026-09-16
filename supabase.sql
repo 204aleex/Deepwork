@@ -101,10 +101,28 @@ alter table public.dw_members
 -- el registro de horarios de una persona— pero el efecto era que en los
 -- grupos abiertos no se veía a nadie conectado nunca, ni siquiera a la
 -- gente que sí quería que la vieran. Ahora se comparte por defecto y se
--- apaga a mano desde Ajustes. Sólo se toca a quien nunca eligió.
-update public.dw_members
+-- apaga a mano desde Ajustes.
+--
+-- El filtro por grupo abierto NO es decorativo: presence_set nace en false,
+-- así que la primera vez que se ejecuta esto no distingue a nadie por sí
+-- solo y "where not presence_set" no guarda nada. Lo que sí distingue es de
+-- dónde venía cada apagado. Antes de este cambio la presencia nacía
+-- ENCENDIDA en los grupos privados y APAGADA en los abiertos, luego:
+--
+--   · apagada en grupo privado -> lo apagó la persona a mano. No se toca.
+--   · apagada en grupo abierto -> nació así. Es la que hay que encender.
+--
+-- Queda un caso que no se puede separar: quien entró en un grupo abierto,
+-- vio la casilla sin marcar y la dejó sin marcar. Se le enciende. Es el
+-- precio de no haber anotado la decisión desde el principio, y se apaga en
+-- un clic desde Ajustes, que ya sí lo anota.
+update public.dw_members m
    set show_presence = true
- where not presence_set and not show_presence;
+  from public.dw_groups g
+ where g.id = m.group_id
+   and g.is_public
+   and not m.presence_set
+   and not m.show_presence;
 
 -- El latido reescribe last_seen y session_started_at cada 45 segundos.
 -- Deliberadamente NO se indexan esas columnas: la tabla tiene decenas de
