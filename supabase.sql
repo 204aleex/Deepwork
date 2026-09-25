@@ -54,16 +54,23 @@ create table if not exists public.dw_days (
   primary key (member_id, day)
 );
 
--- El plan del día ("Tu día") de cada cuenta: una fila por persona con
--- todos sus bloques en un jsonb { id: bloque }. Cada bloque lleva su
--- sello `t` y los borrados quedan como lápida, así que el móvil y el
--- ordenador se fusionan bloque a bloque sin pisarse: gana la escritura
--- más reciente de cada bloque, no el documento entero.
+-- Lo que va con la cuenta: una fila por persona con el plan del día
+-- ("Tu día") en `bloques` { id: bloque } y el registro de días en `dias`
+-- { "2026-09-25": { m: minutos, t: sello } }. Cada entrada lleva su sello
+-- `t` (y los bloques borrados quedan como lápida), así que el móvil y el
+-- ordenador se fusionan entrada a entrada sin pisarse: gana la escritura
+-- más reciente de cada una, no el documento entero.
+--
+-- El registro de días que ya existía (dw_days) es otra cosa: es lo que ve
+-- el grupo y va por miembro, no por persona. Con esta fila, el calendario
+-- de un dispositivo nuevo, o de la app recién instalada en el móvil (que
+-- no comparte datos con Safari), sale lleno desde el primer momento.
 create table if not exists public.dw_plans (
   user_id     uuid primary key references auth.users(id) on delete cascade,
   bloques     jsonb not null default '{}'::jsonb,
   updated_at  timestamptz not null default now()
 );
+alter table public.dw_plans add column if not exists dias jsonb not null default '{}'::jsonb;
 
 -- Apodo único dentro de cada grupo, sin distinguir mayúsculas. Va como
 -- índice y no como `unique (...)` de tabla: Postgres sólo admite
@@ -967,38 +974,15 @@ as $$
 $$;
 
 
--- Sube los bloques de este dispositivo, los fusiona con los guardados y
--- devuelve el resultado, que el dispositivo vuelve a fusionar con lo
--- suyo: una sola ida y vuelta sirve para subir y para bajar. Sólo con
--- cuenta, porque el plan es de la persona y no del dispositivo.
-create or replace function public.dw_plan_sync(p_bloques jsonb)
+-- Fusiona dos mapas { clave: entrada } quedándose, clave a clave, con la
+-- entrada de sello `t` más alto. En empate se queda la guardada. Sólo la
+-- usan las funciones de abajo; no se expone.
+create or replace function public.dw_fusion_por_sello(p_guardado jsonb, p_nuevo jsonb)
 returns jsonb
-language plpgsql
-security definer
+language sql
+immutable
 set search_path = public, pg_temp
-as $BODY$
-declare
-  v_uid    uuid := auth.uid();
-  v_actual jsonb;
-  v_junto  jsonb;
-begin
-  if v_uid is null then
-    raise exception 'Hace falta iniciar sesión para guardar el plan';
-  end if;
-  if p_bloques is null or jsonb_typeof(p_bloques) <> 'object' then
-    p_bloques := '{}'::jsonb;
-  end if;
-  if octet_length(p_bloques::text) > 1000000 then
-    raise exception 'El plan es demasiado grande';
-  end if;
-
-  -- La fila se crea antes de bloquearla: si el móvil y el ordenador
-  -- sincronizaran a la vez por primera vez, sin esto los dos insertarían
-  -- y el segundo pisaría los bloques del primero.
-  insert into dw_plans (user_id) values (v_uid) on conflict (user_id) do nothing;
-  select bloques into v_actual from dw_plans where user_id = v_uid for update;
-
-  -- Bloque a bloque, el de sello más alto. En empate se queda el guardado.
+as $$
   select coalesce(jsonb_object_agg(coalesce(a.key, b.key),
            case
              when b.value is null then a.value
@@ -1008,16 +992,70 @@ begin
                then b.value
              else a.value
            end), '{}'::jsonb)
-    into v_junto
-    from jsonb_each(coalesce(v_actual, '{}'::jsonb)) a
+    from jsonb_each(coalesce(p_guardado, '{}'::jsonb)) a
     full outer join (
-      select key, value from jsonb_each(p_bloques) where jsonb_typeof(value) = 'object'
+      select key, value from jsonb_each(coalesce(p_nuevo, '{}'::jsonb))
+       where jsonb_typeof(value) = 'object'
     ) b on a.key = b.key;
+$$;
 
-  update dw_plans set bloques = v_junto, updated_at = now() where user_id = v_uid;
-  return v_junto;
+-- Sube el plan y los días de este dispositivo, los fusiona con los de la
+-- cuenta y devuelve el resultado, que el dispositivo vuelve a fusionar
+-- con lo suyo: una sola ida y vuelta sirve para subir y para bajar. Lo
+-- que llegue a null no se toca. Sólo con cuenta: es de la persona, no del
+-- dispositivo.
+create or replace function public.dw_cuenta_sync(p_bloques jsonb default null, p_dias jsonb default null)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $BODY$
+declare
+  v_uid     uuid := auth.uid();
+  v_bloques jsonb;
+  v_dias    jsonb;
+begin
+  if v_uid is null then
+    raise exception 'Hace falta iniciar sesión';
+  end if;
+  if p_bloques is not null and jsonb_typeof(p_bloques) <> 'object' then p_bloques := null; end if;
+  if p_dias    is not null and jsonb_typeof(p_dias)    <> 'object' then p_dias    := null; end if;
+  if octet_length(coalesce(p_bloques::text, '')) + octet_length(coalesce(p_dias::text, '')) > 2000000 then
+    raise exception 'Demasiados datos de una vez';
+  end if;
+  -- De los días sólo entran fechas con minutos numéricos.
+  if p_dias is not null then
+    select coalesce(jsonb_object_agg(key, value), '{}'::jsonb) into p_dias
+      from jsonb_each(p_dias)
+     where key ~ '^\d{4}-\d{2}-\d{2}$'
+       and jsonb_typeof(value) = 'object'
+       and jsonb_typeof(value->'m') = 'number';
+  end if;
+
+  -- La fila se crea antes de bloquearla: si el móvil y el ordenador
+  -- sincronizaran a la vez por primera vez, sin esto los dos insertarían
+  -- y el segundo pisaría lo del primero.
+  insert into dw_plans (user_id) values (v_uid) on conflict (user_id) do nothing;
+  select bloques, dias into v_bloques, v_dias from dw_plans where user_id = v_uid for update;
+
+  if p_bloques is not null then v_bloques := dw_fusion_por_sello(v_bloques, p_bloques); end if;
+  if p_dias    is not null then v_dias    := dw_fusion_por_sello(v_dias, p_dias);       end if;
+
+  update dw_plans set bloques = v_bloques, dias = v_dias, updated_at = now() where user_id = v_uid;
+  return jsonb_build_object('bloques', v_bloques, 'dias', v_dias);
 end;
 $BODY$;
+
+-- La primera versión sólo sincronizaba el plan. Se queda para las
+-- pestañas que sigan abiertas con esa versión: ahora es un atajo.
+create or replace function public.dw_plan_sync(p_bloques jsonb)
+returns jsonb
+language sql
+security definer
+set search_path = public, pg_temp
+as $$
+  select public.dw_cuenta_sync(coalesce(p_bloques, '{}'::jsonb), null)->'bloques';
+$$;
 
 
 -- ============================================================= permisos
@@ -1039,8 +1077,12 @@ grant execute on function public.dw_kick(uuid, text, uuid)                 to an
 grant execute on function public.dw_leaderboard(text, date)                to anon, authenticated;
 grant execute on function public.dw_push(uuid, text, jsonb, text)          to anon, authenticated;
 
--- El plan sólo tiene sentido con cuenta: sin ella auth.uid() es null.
+-- Lo que va con la cuenta sólo tiene sentido con ella: sin cuenta
+-- auth.uid() es null. La fusión es interna y no la llama nadie de fuera.
+revoke all on function public.dw_cuenta_sync(jsonb, jsonb) from public, anon;
 revoke all on function public.dw_plan_sync(jsonb) from public, anon;
+revoke all on function public.dw_fusion_por_sello(jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.dw_cuenta_sync(jsonb, jsonb)              to authenticated;
 grant execute on function public.dw_plan_sync(jsonb)                       to authenticated;
 
 -- El barrendero no se expone: no lo llama nadie desde el navegador.
