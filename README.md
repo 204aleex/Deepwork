@@ -24,6 +24,26 @@ Desde el pie de la app puedes **Exportar** una copia en JSON e
 **Importar**la en otro dispositivo. Al importar se fusiona, no se
 sobrescribe: nunca pierdes días.
 
+## Organizar el día
+
+La tarjeta **Tu día** es un reloj de 24 horas (las 00 arriba, las 12
+abajo) donde repartes el día en bloques de colores. La aguja roja marca la
+hora actual y en el centro sale el total planificado, lo que más tiempo se
+lleva y qué toca ahora.
+
+- **Añadir**: el botón **+**, un toque sobre el aro o arrastrar el dedo
+  sobre él para dibujar el bloque a medida (se ajusta a cuartos de hora).
+- **Mover**: arrastra un bloque por el aro.
+- **Editar o borrar**: tócalo.
+- Un bloque puede **repetirse** ciertos días de la semana (el insti de
+  lunes a viernes, dormir todos los días). Al borrar uno que se repite
+  puedes quitarlo sólo ese día o de todos.
+- Marca los bloques de **trabajo profundo** y el centro te dice cuántas
+  horas de foco tienes planificadas.
+
+El plan se guarda en el dispositivo igual que el registro y viaja en la
+misma copia de **Exportar** / **Importar**.
+
 ## Ranking por grupos (opcional)
 
 Sin configurar, la app funciona igual y el ranking sale desactivado.
