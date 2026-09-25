@@ -2879,11 +2879,49 @@ async function verificarCodigo(email, codigo) {
   return true;
 }
 
-function entrarConGoogle() {
+/* Antes de irse a Google se pregunta a Supabase si está ahí. Con el
+   proyecto pausado (o despertando) la redirección acababa en una página
+   de error de supabase.co, y en la app instalada del móvil no hay barra
+   ni botón de atrás para volver: te quedabas atrapado fuera de la app. */
+async function entrarConGoogle() {
   if (!supaReady()) { toast("Falta configurar Supabase", true); return; }
+  const boton = $("cEntrar");
+  if (boton && boton.disabled) return;
+  busy(boton, true, "Entrar con Google");
+
+  let ajustes = null;
+  try {
+    const r = await fetchConCorte(supaBase() + "/auth/v1/settings", { headers: { apikey: SUPA.SUPABASE_KEY } }, 10000);
+    if (r.ok) ajustes = await r.json().catch(() => null);
+  } catch (e) { /* ajustes se queda en null */ }
+
+  if (!ajustes) {
+    busy(boton, false, "Entrar con Google");
+    showModalError("No se puede conectar con el servidor ahora mismo. Si el proyecto de Supabase " +
+                   "estaba pausado, tarda unos minutos en volver: prueba otra vez en un rato.");
+    return;
+  }
+  if (ajustes.external && ajustes.external.google === false) {
+    busy(boton, false, "Entrar con Google");
+    showModalError("El acceso con Google está desactivado en Supabase (Authentication → Sign In / Providers → Google).");
+    return;
+  }
+
   // Se vuelve exactamente a esta página, sin parámetros ni almohadilla.
   const vuelta = location.origin + location.pathname;
   location.href = supaBase() + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(vuelta);
+}
+
+/* fetch con tiempo máximo: una red que acepta la conexión y no contesta
+   dejaría la petición colgada para siempre. */
+async function fetchConCorte(url, opciones, ms) {
+  const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const corte = ctrl ? setTimeout(() => ctrl.abort(), ms) : null;
+  try {
+    return await fetch(url, Object.assign({}, opciones, { signal: ctrl ? ctrl.signal : undefined }));
+  } finally {
+    if (corte) clearTimeout(corte);
+  }
 }
 
 async function salirDeLaCuenta() {
@@ -2932,27 +2970,37 @@ async function tokenValido() {
   if (Date.now() < cuenta.expira) return cuenta.access_token;
   if (refrescando) return refrescando;
 
+  /* Sólo se cierra la sesión cuando Supabase dice que el refresco no vale
+     (400/401/403). Antes cualquier fallo echaba de la cuenta: sin
+     cobertura, con el servidor caído o con el proyecto pausado, la app
+     te sacaba y tocaba volver a entrar con Google. Ahora esos fallos se
+     tratan como estar sin conexión: la petición falla, se reintenta en
+     el siguiente ciclo y la cuenta sigue ahí. */
   refrescando = (async () => {
+    let r;
     try {
-      const r = await fetch(supaBase() + "/auth/v1/token?grant_type=refresh_token", {
+      r = await fetchConCorte(supaBase() + "/auth/v1/token?grant_type=refresh_token", {
         method: "POST",
         headers: { "Content-Type": "application/json", apikey: SUPA.SUPABASE_KEY },
         body: JSON.stringify({ refresh_token: cuenta.refresh_token })
-      });
-      const d = await r.json();
-      if (!r.ok || !d.access_token) throw new Error("refresco rechazado");
+      }, RPC_TIMEOUT);
+    } catch (e) {
+      throw new Error("Sin conexión");
+    }
+    const d = await r.json().catch(() => null);
+    if (r.ok && d && d.access_token) {
       guardarCuenta(d);
       return cuenta.access_token;
-    } catch (e) {
+    }
+    if (r.status === 400 || r.status === 401 || r.status === 403) {
       // El refresco caducado deja la cuenta fuera, pero NO toca el grupo:
       // se sigue funcionando con las credenciales del dispositivo.
       guardarCuenta(null);
       renderRanking();
       return null;
-    } finally {
-      refrescando = null;
     }
-  })();
+    throw new Error("El servidor no responde (" + r.status + ")");
+  })().finally(() => { refrescando = null; });
   return refrescando;
 }
 
