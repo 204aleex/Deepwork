@@ -756,10 +756,26 @@
 
   /* ---------- editor de bloque ---------- */
   .pe-fila { display: flex; gap: 10px; }
+  /* Las dos horas, en dos columnas que no pueden crecer: aunque un campo
+     quisiera ser más ancho, ya no empuja al otro. */
+  .pe-fila.horas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .pe-campo { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .pe-campo.icono { flex: 0 0 64px; }
   .pe-campo.icono input { text-align: center; padding-left: 4px; padding-right: 4px; }
-  .pe-campo input[type=time] { text-align: center; }
+  /* En el iPhone el campo de hora trae un ancho mínimo propio que no hace
+     caso ni a width ni a min-width mientras conserva el aspecto nativo:
+     el de "Empieza" se ensanchaba y el de "Termina" se le montaba encima
+     y se salía del diálogo. Sin el aspecto nativo sí obedece; el selector
+     de hora sigue saliendo igual al tocarlo. */
+  .pe-campo input[type=time] {
+    -webkit-appearance: none; appearance: none;
+    display: block; width: 100%; min-width: 0; max-width: 100%;
+    min-height: 48px; text-align: center;
+    color-scheme: dark;             /* el icono del reloj, claro sobre el fondo oscuro */
+  }
+  /* Safari alinea la hora a la izquierda por dentro, aunque el campo diga
+     text-align: center. */
+  .pe-campo input[type=time]::-webkit-date-and-time-value { text-align: center; }
   /* Ocho en una fila, repartidas: con el ancho de chip normal saltaban a
      una segunda fila y dejaban un hueco raro encima de las horas. Va con
      .modal delante porque .presets, más abajo, pisaría el margen. */
@@ -5702,7 +5718,7 @@ function abrirEditorBloque(bloque, rango) {
       '<div class="presets pe-emojis">' + PLAN_EMOJIS.map((em) =>
         '<button type="button" class="chip" data-emoji="' + em + '" aria-label="Usar ' + em + '">' + em + "</button>").join("") +
       "</div>" +
-      '<div class="pe-fila">' +
+      '<div class="pe-fila horas">' +
         '<label class="pe-campo"><span class="field-label">Empieza</span>' +
           '<input type="time" id="peIni" step="300" value="' + fmtHora(b.inicio) + '" /></label>' +
         '<label class="pe-campo"><span class="field-label">Termina</span>' +
