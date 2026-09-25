@@ -31,10 +31,15 @@ arriba, las 00 abajo) donde repartes el día en bloques de colores. La aguja roj
 hora actual y en el centro sale el total planificado, lo que más tiempo se
 lleva y qué toca ahora.
 
-- **Añadir**: el botón **+**, un toque sobre el aro o arrastrar el dedo
-  sobre él para dibujar el bloque a medida (se ajusta a cuartos de hora).
+- **Añadir**: el botón **+**, un toque sobre el aro o arrastrar sobre él
+  para dibujar el bloque a medida (se ajusta a cuartos de hora). En el
+  móvil, para arrastrar hay que mantener el dedo quieto un instante
+  (vibra): deslizar sin más hace scroll de la página.
 - **Mover**: arrastra un bloque por el aro.
 - **Editar o borrar**: tócalo.
+- **En grande**: en el ordenador, el botón **⤢** pone el día a pantalla
+  completa. La dirección `…/Deepwork/#dia` lo abre así directamente, para
+  tenerlo en una pestaña aparte.
 - Un bloque puede **repetirse** ciertos días de la semana (el insti de
   lunes a viernes, dormir todos los días). Al borrar uno que se repite
   puedes quitarlo sólo ese día o de todos.
@@ -43,9 +48,10 @@ lleva y qué toca ahora.
 
 El plan se guarda en el dispositivo igual que el registro y viaja en la
 misma copia de **Exportar** / **Importar**. Con la sesión iniciada (Google o
-correo) se guarda además en tu cuenta: lo que pones en el ordenador sale en
-el móvil y al revés. Para eso hace falta la tabla `dw_plans` y la función
-`dw_plan_sync` de `supabase.sql`.
+correo), el plan **y el registro de días** se guardan además en tu cuenta:
+lo que pones en el ordenador sale en el móvil y al revés, y la app recién
+instalada en el móvil empieza con tu calendario lleno. Para eso hace falta
+la tabla `dw_plans` y la función `dw_cuenta_sync` de `supabase.sql`.
 
 ## Ranking por grupos (opcional)
 
@@ -94,7 +100,13 @@ también vale: al pulsarlo se vuelve a la app ya dentro.
 
 Para que llegue el código en vez del enlace, en **Supabase →
 Authentication → Emails → Magic Link** añade `{{ .Token }}` a la
-plantilla. No es obligatorio.
+plantilla. En el móvil es casi obligatorio: el enlace se abre en el
+navegador, no en la app instalada, así que te deja dentro del navegador
+y no de la app.
+
+Si el enlace lleva a un 404 de GitHub, la *Site URL* de Supabase apunta a
+la raíz (`https://204aleex.github.io/`) en vez de a la app: corrígela en
+**Authentication → URL Configuration** como se explica arriba.
 
 Con eso, el botón **Entrar** de la app ya funciona. Al iniciar sesión:
 

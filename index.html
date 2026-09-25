@@ -582,6 +582,26 @@
   .plan-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .plan-nav.mas { background: var(--accent-deep); border-color: transparent; color: #fff; font-size: 22px; }
 
+  /* ---------- tu día en grande ----------
+     En el escritorio la tarjeta vive en una columna de 300 px y el aro se
+     quedaba pequeño. Con ⤢ la misma tarjeta pasa a ocupar la pantalla
+     entera: los mismos datos y los mismos gestos, sólo que en grande. En
+     el móvil ya ocupa todo el ancho, así que el botón no sale. */
+  .plan-ampliar { display: none; position: absolute; top: 0; right: 0; z-index: 3; font-size: 17px; }
+  @media (min-width: 700px) { .plan-ampliar { display: grid; } }
+  body.plan-grande { overflow: hidden; }
+  body.plan-grande #planCard {
+    position: fixed; inset: 0; z-index: 70;
+    border: none; border-radius: 0;
+    padding: calc(18px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right))
+             calc(18px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
+    justify-content: center; gap: 14px;
+    animation: fadeIn .2s var(--ease);
+  }
+  body.plan-grande #planCard .plan-head { width: 100%; max-width: 980px; margin: 0 auto; }
+  body.plan-grande #planCard .plan-dial { width: min(100%, calc(100dvh - 110px)); }
+  body.plan-grande #planCard .plan-fecha { font-size: 21px; }
+
   .plan-dial {
     position: relative; width: min(100%, 440px); aspect-ratio: 1;
     margin: 0 auto; container-type: inline-size;
@@ -589,9 +609,17 @@
   .plan-svg {
     position: absolute; inset: 0; width: 100%; height: 100%;
     overflow: visible; user-select: none; -webkit-user-select: none;
-    -webkit-touch-callout: none;
   }
-  .pd-aro { fill: var(--flip-bg); cursor: pointer; touch-action: none; }
+  /* La capa de toque cubre el dibujo entero y decide por geometría qué
+     hay debajo del dedo. El dedo hace scroll también sobre el aro: el
+     arrastre, que pide mantenerlo quieto antes, frena la página desde el
+     JS. El cursor lo pone el JS según lo que haya debajo. */
+  .plan-toque {
+    position: absolute; inset: 0; z-index: 2;
+    touch-action: manipulation;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  .pd-aro { fill: var(--flip-bg); }
   .pd-disco { fill: #111118; pointer-events: none; }
   .pd-marca { stroke: rgba(255,255,255,.22); stroke-width: 1; pointer-events: none; }
   .pd-marca.hora { stroke: rgba(255,255,255,.42); stroke-width: 1.4; }
@@ -602,12 +630,13 @@
     paint-order: stroke; stroke: #111118; stroke-width: 3px; stroke-linejoin: round;
   }
   .pd-bloque {
-    fill-opacity: .3; stroke-width: 1.6; cursor: grab; touch-action: none;
+    fill-opacity: .3; stroke-width: 1.6;
     transition: fill-opacity .2s var(--ease);
   }
   .pd-bloque:focus { outline: none; }
   .pd-bloque:focus-visible { stroke-width: 3.4; fill-opacity: .5; }
-  .pd-bloque.moviendo { fill-opacity: .55; cursor: grabbing; }
+  .pd-bloque.encima { fill-opacity: .44; }
+  .pd-bloque.moviendo { fill-opacity: .55; }
   .pd-texto {
     font-size: 11.5px; font-weight: 600; fill: var(--text); pointer-events: none;
     letter-spacing: .02em;
@@ -622,7 +651,6 @@
   .pd-luna { fill: var(--accent); pointer-events: none; }
   .pd-sol { fill: #f5b945; stroke: #f5b945; pointer-events: none; }
   @media (hover: hover) and (pointer: fine) {
-    .pd-bloque:hover { fill-opacity: .44; }
     .plan-nav:hover { color: var(--text); background: var(--panel-2); }
     .plan-nav.mas:hover { background: #4a67e8; }
   }
@@ -1231,6 +1259,11 @@
       padding: clamp(16px, 1.4vw, 22px) clamp(14px, 1.2vw, 22px);
     }
     #planCard .plan-head { padding: 0 4px; }
+    /* Botones un poco más pequeños en una columna de 300 px, para que la
+       fecha no se corte. En grande vuelven a su tamaño. */
+    #planCard .plan-tools { gap: 5px; }
+    #planCard .plan-nav { width: 34px; height: 34px; }
+    body.plan-grande #planCard .plan-nav { width: 40px; height: 40px; }
     #planCard .plan-dial { width: min(100%, 40dvh); }
     #planCard .plan-fecha { font-size: clamp(15px, 1.15vw, 19px); }
     #planCard .eyebrow, #planCard .plan-volver { font-size: clamp(10.5px, .78vw, 13px); }
@@ -1488,6 +1521,14 @@
       <svg class="plan-svg" id="planSvg" viewBox="0 0 400 400" role="group"
            aria-label="Reloj de 24 horas con los bloques del día"></svg>
       <div class="plan-centro" id="planCentro"></div>
+      <!-- Recibe los toques y los clics del aro. Va aparte del dibujo porque
+           el dibujo se rehace entero mientras arrastras, y un toque sigue
+           yendo al elemento donde empezó aunque ya no esté en la página. -->
+      <div class="plan-toque" id="planToque" aria-hidden="true"></div>
+      <!-- En la esquina del cuadrado, que el aro, al ser redondo, deja libre:
+           en la cabecera no cabía un cuarto botón sin cortar la fecha. -->
+      <button type="button" class="plan-nav plan-ampliar" id="planGrande" aria-label="Ver en grande"
+              aria-pressed="false" title="Ver en grande">⤢</button>
     </div>
   </section>
 
@@ -1808,20 +1849,27 @@ async function loadAsync() {
   const changed = JSON.stringify(merged.days) !== JSON.stringify(doc.days);
   doc = merged;
   bumpStampFloor(doc);
-  persist();                      // deja las tres copias al día desde el arranque
+  // Deja las tres copias al día desde el arranque. Sin subir a la cuenta:
+  // eso lo hace el arranque en cuanto termina de leer IndexedDB.
+  persistLocal();
+  schedulePush();
   if (changed) render();
 }
 
 /* Escribe fusionando antes con lo que haya en disco: si tienes la app
    abierta en dos pestañas, ninguna pisa el trabajo de la otra. */
-function persist() {
+function persistLocal() {
   doc = mergeDocs(normalize(readJSON(K.LOG)), doc);
   doc.updatedAt = stamp();
   const ok = writeJSON(K.LOG, doc);
   writeJSON(K.BACKUP, doc);
   idbSet("log", doc);
   if (!ok) toast("No se ha podido guardar en este navegador", true);
+}
+function persist() {
+  persistLocal();
   schedulePush();
+  programarSyncCuenta();
 }
 
 function savePrefs() { writeJSON(K.PREFS, prefs); }
@@ -2853,12 +2901,21 @@ function guardarCuenta(datos) {
 /* Entrar con el correo. Supabase manda un mensaje que trae un código de
    seis cifras y/o un enlace: valen los dos caminos. El código es mejor en
    el móvil, porque no te saca de la app instalada. */
+/* A dónde vuelve Supabase después de entrar. Sin "index.html": la app
+   instalada se abre en /Deepwork/index.html, y esa dirección no está en la
+   lista de Supabase, que entonces te mandaba a su "Site URL". */
+function direccionDeVuelta() {
+  return location.origin + location.pathname.replace(/index\.html$/, "");
+}
+
 async function pedirCodigo(email) {
-  const vuelta = location.origin + location.pathname;
-  const r = await fetch(supaBase() + "/auth/v1/otp", {
+  // La vuelta va en la dirección (?redirect_to=), que es donde la lee
+  // Supabase. Antes iba en el cuerpo, Supabase no la veía y el enlace del
+  // correo llevaba a la raíz de github.io: un 404.
+  const r = await fetch(supaBase() + "/auth/v1/otp?redirect_to=" + encodeURIComponent(direccionDeVuelta()), {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: SUPA.SUPABASE_KEY },
-    body: JSON.stringify({ email: email, create_user: true, options: { email_redirect_to: vuelta } })
+    body: JSON.stringify({ email: email, create_user: true })
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d.msg || d.error_description || d.message || "No se ha podido enviar el correo");
@@ -2907,9 +2964,8 @@ async function entrarConGoogle() {
     return;
   }
 
-  // Se vuelve exactamente a esta página, sin parámetros ni almohadilla.
-  const vuelta = location.origin + location.pathname;
-  location.href = supaBase() + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(vuelta);
+  // Se vuelve a esta página, sin parámetros ni almohadilla.
+  location.href = supaBase() + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(direccionDeVuelta());
 }
 
 /* fetch con tiempo máximo: una red que acepta la conexión y no contesta
@@ -4232,7 +4288,7 @@ function openCodigo(email) {
           toast("Sesión iniciada");
           await recuperarGrupo();
           if (group && supaReady()) ciclo({ forzar: true, conDias: true });
-          sincronizarPlan();
+          sincronizarCuenta();
         } catch (e) {
           busy(boton, false, "Entrar");
           showModalError(e.message);
@@ -4658,6 +4714,13 @@ const redondo = (n) => Math.round(n * 100) / 100;
 
 function planVacio() { return { version: 1, bloques: {}, updatedAt: 0 }; }
 
+/* El icono se recorta por caracteres, no por unidades de UTF-16: un emoji
+   del teclado del móvil ocupa de dos a once unidades, y cortar a ocho
+   dejaba medio emoji, que se pintaba como "�". */
+function recortarIcono(s) {
+  return Array.from(String(s || "")).slice(0, 8).join("");
+}
+
 /* Todo lo que entra se revisa: puede venir de un JSON importado, y el
    color acaba dentro de un atributo. */
 function normalizarPlan(raw) {
@@ -4680,7 +4743,7 @@ function normalizarPlan(raw) {
     p.bloques[id] = {
       id: id,
       nombre: String(b.nombre || "").slice(0, 40),
-      emoji: String(b.emoji || "").slice(0, 8),
+      emoji: recortarIcono(b.emoji),
       inicio: ini,
       fin: fin,
       color: /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : PLAN_COLORES[0].hex,
@@ -4729,56 +4792,67 @@ function guardarPlanLocal() {
 }
 function guardarPlan() {
   guardarPlanLocal();
-  programarSyncPlan();
+  programarSyncCuenta();
 }
 
-/* ------------------------- el plan en la cuenta --------------------- */
-/* Antes el plan vivía sólo en el dispositivo: lo que ponías en el
-   ordenador no llegaba nunca al móvil, aunque entraras con la misma
-   cuenta. Ahora, con la sesión iniciada, una sola llamada a dw_plan_sync
-   sube los bloques de aquí y devuelve los de la cuenta ya fusionados, y
-   aquí se vuelven a fusionar con lo local, que puede haber cambiado
-   mientras tanto. Sin cuenta o sin conexión, todo sigue funcionando en el
-   dispositivo como hasta ahora; lo pendiente sube en la siguiente vuelta. */
-const PLAN_SYNC_PAUSA = 1500;       // tras un cambio: junta varios en una petición
-const PLAN_SYNC_CADA = 120000;      // con la app delante, se mira si hay cambios de fuera
-let planSyncTimer = null;
-let planEnVuelo = null;
-let planOtraVez = false;
-let planUltimoIntento = 0;
+/* ---------------------- lo que va con la cuenta --------------------- */
+/* El plan y el registro de días vivían sólo en el dispositivo: lo que
+   ponías en el ordenador no llegaba al móvil aunque entraras con la misma
+   cuenta, y la app instalada en el iPhone (que no comparte datos con
+   Safari) empezaba con el calendario vacío. Ahora, con la sesión
+   iniciada, una sola llamada a dw_cuenta_sync sube lo de aquí y devuelve
+   lo de la cuenta ya fusionado, y aquí se vuelve a fusionar con lo local,
+   que puede haber cambiado mientras tanto. Sin cuenta o sin conexión todo
+   sigue funcionando en el dispositivo; lo pendiente sube en la siguiente
+   vuelta. */
+const CUENTA_SYNC_PAUSA = 1500;     // tras un cambio: junta varios en una petición
+const CUENTA_SYNC_CADA = 120000;    // con la app delante, se mira si hay cambios de fuera
+let cuentaSyncTimer = null;
+let cuentaEnVuelo = null;
+let cuentaOtraVez = false;
+let cuentaUltimoIntento = 0;
 
-function programarSyncPlan(ms) {
+function programarSyncCuenta(ms) {
   if (!sesionIniciada() || !supaReady()) return;
-  clearTimeout(planSyncTimer);
-  planSyncTimer = setTimeout(sincronizarPlan, ms === undefined ? PLAN_SYNC_PAUSA : ms);
+  clearTimeout(cuentaSyncTimer);
+  cuentaSyncTimer = setTimeout(sincronizarCuenta, ms === undefined ? CUENTA_SYNC_PAUSA : ms);
 }
 
-function sincronizarPlan() {
+function sincronizarCuenta() {
   if (!sesionIniciada() || !supaReady()) return Promise.resolve();
   // Un cambio hecho mientras hay una petición en el aire no se pierde: se
   // manda otra en cuanto vuelva la primera.
-  if (planEnVuelo) { planOtraVez = true; return planEnVuelo; }
-  clearTimeout(planSyncTimer);
-  planUltimoIntento = Date.now();
-  planEnVuelo = (async () => {
+  if (cuentaEnVuelo) { cuentaOtraVez = true; return cuentaEnVuelo; }
+  clearTimeout(cuentaSyncTimer);
+  cuentaUltimoIntento = Date.now();
+  cuentaEnVuelo = (async () => {
     try {
-      const r = await rpc("dw_plan_sync", { p_bloques: plan.bloques });
-      const remoto = normalizarPlan({ bloques: r || {} });
-      const antes = JSON.stringify(plan.bloques);
-      plan = fusionarPlan(plan, remoto);
+      const r = (await rpc("dw_cuenta_sync", { p_bloques: plan.bloques, p_dias: doc.days })) || {};
+
+      const antesPlan = JSON.stringify(plan.bloques);
+      plan = fusionarPlan(plan, normalizarPlan({ bloques: r.bloques || {} }));
       subirSelloPlan(plan);
-      if (JSON.stringify(plan.bloques) !== antes) {
-        guardarPlanLocal();
-        renderPlan();
-      }
+      const cambiaPlan = JSON.stringify(plan.bloques) !== antesPlan;
+      if (cambiaPlan) guardarPlanLocal();
+
+      const antesDias = JSON.stringify(doc.days);
+      doc = mergeDocs(doc, normalize({ version: 2, days: r.dias || {}, updatedAt: 0 }));
+      bumpStampFloor(doc);
+      const cambianDias = JSON.stringify(doc.days) !== antesDias;
+      // Los días que llegan de otro dispositivo también se mandan al grupo,
+      // para que el ranking cuente las horas de los dos.
+      if (cambianDias) { persistLocal(); schedulePush(); }
+
+      if (cambianDias) render();
+      else if (cambiaPlan) renderPlan();
     } catch (e) {
       /* sin conexión: se reintenta en la siguiente vuelta */
     } finally {
-      planEnVuelo = null;
-      if (planOtraVez) { planOtraVez = false; programarSyncPlan(300); }
+      cuentaEnVuelo = null;
+      if (cuentaOtraVez) { cuentaOtraVez = false; programarSyncCuenta(300); }
     }
   })();
-  return planEnVuelo;
+  return cuentaEnVuelo;
 }
 
 async function cargarPlanAsync() {
@@ -5057,8 +5131,12 @@ function pintarCentroPlan() {
 
   let html = '<div class="pc-dia">' + escapeHtml(dia) + "</div>";
   if (!lista.length) {
+    // En táctil, dibujar pide mantener el dedo antes de arrastrar.
+    const tactil = window.matchMedia("(pointer: coarse)").matches;
     html += '<div class="pc-total">Nada planificado</div>' +
-            '<div class="pc-pista">Toca o arrastra sobre el aro para añadir un bloque</div>';
+            '<div class="pc-pista">' + (tactil
+              ? "Toca el aro para añadir un bloque, o mantén el dedo y arrastra para dibujarlo"
+              : "Haz clic o arrastra sobre el aro para añadir un bloque") + "</div>";
   } else {
     html += '<div class="pc-total">' + fmtMinutes(total) + " planificado" +
             (foco ? " · " + fmtMinutes(foco) + " de foco" : "") + "</div>";
@@ -5152,6 +5230,7 @@ function soltarAro(e, cancelado) {
   const a = planArrastre;
   if (!a || e.pointerId !== a.puntero) return;
   planArrastre = null;
+  clearTimeout(a.espera);
   if (cancelado) { renderPlan(); return; }
 
   if (a.modo === "crear") {
@@ -5178,28 +5257,94 @@ function soltarAro(e, cancelado) {
         (seRepite(a.bloque) ? " · " + textoRepite(a.bloque.dias).toLowerCase() : ""));
 }
 
+function ponerPlanGrande(si) {
+  document.body.classList.toggle("plan-grande", si);
+  const boton = $("planGrande");
+  boton.textContent = si ? "✕" : "⤢";
+  boton.title = si ? "Volver" : "Ver en grande";
+  boton.setAttribute("aria-label", si ? "Cerrar la vista grande" : "Ver en grande");
+  boton.setAttribute("aria-pressed", String(si));
+  // La dirección lo recuerda, sin dejar una entrada nueva en el historial.
+  try {
+    history.replaceState(null, "", location.pathname + location.search + (si ? "#dia" : ""));
+  } catch (e) { /* sin history, sólo no se recuerda */ }
+}
+
+/* En táctil, arrastrar pide dejar el dedo quieto un instante. Antes
+   bastaba con apoyarlo, y como el aro ocupa media pantalla del móvil, al
+   deslizar para bajar por la página se dibujaba un bloque y se abría el
+   editor. Ahora deslizar es scroll, tocar sigue abriendo al momento, y
+   para dibujar o mover se mantiene el dedo (vibra) y se arrastra. Con
+   ratón no hay duda posible y se arrastra directamente. */
+const ESPERA_TACTIL = 300;
+
+/* El bloque de más arriba en ese minuto: el último que se pinta. */
+function bloqueEn(min) {
+  const lista = bloquesDe(planDia);
+  for (let i = lista.length - 1; i >= 0; i--) if (cubre(lista[i], min)) return lista[i];
+  return null;
+}
+
+/* Con ratón, el bloque de debajo se resalta y el cursor dice qué se puede
+   hacer. Lo hace el JS porque la capa de toque tapa el dibujo y :hover ya
+   no llega a los bloques. */
+function marcarEncima(e) {
+  const toque = $("planToque");
+  const p = aroDesde(e);
+  const bloque = enElAro(p) ? bloqueEn(p.min) : null;
+  toque.style.cursor = bloque ? "grab" : enElAro(p) ? "pointer" : "";
+  $("planSvg").querySelectorAll(".pd-bloque").forEach((el) =>
+    el.classList.toggle("encima", !!bloque && el.getAttribute("data-id") === bloque.id));
+}
+
 function cablearAro() {
   const svg = $("planSvg");
+  const toque = $("planToque");
 
-  svg.addEventListener("pointerdown", (e) => {
+  toque.addEventListener("pointerdown", (e) => {
     if (planArrastre || (e.pointerType === "mouse" && e.button !== 0)) return;
     const p = aroDesde(e);
     if (!enElAro(p)) return;
-    const lista = bloquesDe(planDia);
-    let bloque = null;
-    for (let i = lista.length - 1; i >= 0; i--) if (cubre(lista[i], p.min)) { bloque = lista[i]; break; }
-    planArrastre = {
+    const bloque = bloqueEn(p.min);
+    const tactil = e.pointerType !== "mouse";
+    const a = planArrastre = {
       puntero: e.pointerId, modo: bloque ? "mover" : "crear", bloque: bloque,
       min0: p.min, prev: p.min, acum: 0, x0: e.clientX, y0: e.clientY,
-      movido: false, rango: null, firma: null
+      movido: false, rango: null, firma: null, listo: !tactil, espera: null
     };
-    try { svg.setPointerCapture(e.pointerId); } catch (err) { /* sin captura también vale */ }
-    e.preventDefault();
+    try { toque.setPointerCapture(e.pointerId); } catch (err) { /* sin captura también vale */ }
+    if (!tactil) {
+      if (bloque) toque.style.cursor = "grabbing";
+      e.preventDefault();
+      return;
+    }
+
+    a.espera = setTimeout(() => {
+      if (planArrastre !== a) return;
+      a.listo = true;
+      haptic(15);
+      // Se enseña ya lo que se va a arrastrar: el bloque resaltado, o un
+      // cuarto de hora nuevo donde está el dedo.
+      a.rango = rangoArrastre(a);
+      a.firma = a.rango.inicio + "-" + a.rango.fin;
+      dibujarPlan(a);
+      pintarCentroArrastre(a.rango, a.modo === "mover" ? escapeHtml(a.bloque.nombre || "Bloque") : "Arrastra para dibujarlo");
+    }, ESPERA_TACTIL);
   });
 
-  svg.addEventListener("pointermove", (e) => {
+  toque.addEventListener("pointermove", (e) => {
     const a = planArrastre;
-    if (!a || e.pointerId !== a.puntero) return;
+    if (!a) { if (e.pointerType === "mouse") marcarEncima(e); return; }
+    if (e.pointerId !== a.puntero) return;
+    if (!a.listo) {
+      // El dedo se mueve antes de tiempo: es scroll, no arrastre.
+      if (Math.hypot(e.clientX - a.x0, e.clientY - a.y0) > 10) {
+        clearTimeout(a.espera);
+        planArrastre = null;
+        try { toque.releasePointerCapture(e.pointerId); } catch (err) { /* ya estaba suelto */ }
+      }
+      return;
+    }
     const p = aroDesde(e);
     // Cerca del centro el ángulo baila con un píxel de nada: se ignora.
     if (p.r < 40) return;
@@ -5223,16 +5368,36 @@ function cablearAro() {
     pintarCentroArrastre(r, a.modo === "mover" ? escapeHtml(a.bloque.nombre || "Bloque") : "Nuevo bloque");
   });
 
-  svg.addEventListener("pointerup", (e) => soltarAro(e, false));
-  svg.addEventListener("pointercancel", (e) => soltarAro(e, true));
-  svg.addEventListener("lostpointercapture", (e) => soltarAro(e, true));
+  toque.addEventListener("pointerup", (e) => {
+    soltarAro(e, false);
+    if (e.pointerType === "mouse") marcarEncima(e);
+  });
+  toque.addEventListener("pointercancel", (e) => soltarAro(e, true));
+  toque.addEventListener("lostpointercapture", (e) => soltarAro(e, true));
+  toque.addEventListener("pointerleave", (e) => {
+    if (planArrastre || e.pointerType !== "mouse") return;
+    toque.style.cursor = "";
+    svg.querySelectorAll(".pd-bloque.encima").forEach((el) => el.classList.remove("encima"));
+  });
 
-  /* touch-action:none en el aro basta en Chrome; Safari no siempre lo
-     respeta en elementos de SVG y el arrastre acababa moviendo la página.
-     Sólo se frena el scroll si el dedo cae en el aro: sobre el centro la
-     página se desplaza como siempre. */
-  svg.addEventListener("touchstart", (e) => {
-    if (e.touches.length === 1 && enElAro(aroDesde(e.touches[0]))) e.preventDefault();
+  /* La página sólo se frena cuando ya se está arrastrando: hasta entonces
+     el dedo hace scroll como en cualquier otro sitio. Safari no siempre
+     respeta touch-action, así que se frena a mano. */
+  toque.addEventListener("touchmove", (e) => {
+    if (planArrastre && planArrastre.listo && e.cancelable) e.preventDefault();
+  }, { passive: false });
+
+  /* Un toque en el aro abre el editor en el pointerup, y el móvil manda
+     después un mousedown de compatibilidad al mismo punto: caía en el
+     fondo del diálogo recién abierto y lo cerraba al instante. Cancelar
+     el touchend se lleva esos eventos por delante. */
+  let toqueEnAro = false;
+  toque.addEventListener("touchstart", (e) => {
+    toqueEnAro = e.touches.length === 1 && enElAro(aroDesde(e.touches[0]));
+  }, { passive: true });
+  toque.addEventListener("touchend", (e) => {
+    if (toqueEnAro && e.cancelable) e.preventDefault();
+    toqueEnAro = false;
   }, { passive: false });
 
   svg.addEventListener("keydown", (e) => {
@@ -5246,6 +5411,13 @@ function cablearAro() {
 
   wireButton($("planPrev"), () => moverDiaPlan(-1));
   wireButton($("planNext"), () => moverDiaPlan(1));
+  wireButton($("planGrande"), () => ponerPlanGrande(!document.body.classList.contains("plan-grande")));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !closeModal && document.body.classList.contains("plan-grande")) ponerPlanGrande(false);
+  });
+  // Con #dia en la dirección, la app se abre ya con el día en grande: así
+  // se puede tener en una pestaña aparte o en marcadores.
+  if (location.hash === "#dia") ponerPlanGrande(true);
   wireButton($("planAdd"), () => {
     // Hoy, desde la próxima media hora; otro día, desde las nueve.
     const ini = planDia === dateKey(new Date()) ? Math.ceil(minutoAhora() / 30) * 30 : 9 * 60;
@@ -5256,7 +5428,7 @@ function cablearAro() {
   // aro entero cada medio minuto le quitaría el foco a quien use teclado.
   setInterval(() => {
     if (document.visibilityState !== "visible" || planArrastre) return;
-    if (Date.now() - planUltimoIntento > PLAN_SYNC_CADA) sincronizarPlan();
+    if (Date.now() - cuentaUltimoIntento > CUENTA_SYNC_CADA) sincronizarCuenta();
     const hoy = dateKey(new Date());
     if (planSigueHoy && planDia !== hoy) { renderPlan(); return; }
     if (planDia !== hoy) return;
@@ -5293,7 +5465,7 @@ function abrirEditorBloque(bloque, rango) {
     '<div class="fields">' +
       '<div class="pe-fila">' +
         '<label class="pe-campo icono"><span class="field-label">Icono</span>' +
-          '<input class="text" id="peEmoji" maxlength="8" autocomplete="off" value="' + escapeHtml(b.emoji || "") + '" /></label>' +
+          '<input class="text" id="peEmoji" maxlength="24" autocomplete="off" value="' + escapeHtml(b.emoji || "") + '" /></label>' +
         '<label class="pe-campo"><span class="field-label">Nombre</span>' +
           '<input class="text" id="peNombre" maxlength="40" autocomplete="off" enterkeyhint="done"' +
           ' placeholder="Estudiar, gimnasio…" value="' + escapeHtml(b.nombre || "") + '" /></label>' +
@@ -5396,17 +5568,24 @@ function abrirEditorBloque(bloque, rango) {
         if (!iconoElegido && igual.emoji) icono.value = igual.emoji;
       });
 
+      // El diálogo tarda 200 ms en irse y mientras tanto sus botones
+      // siguen vivos: un doble toque en Guardar creaba el bloque dos veces,
+      // con dos ids distintos, uno encima del otro.
+      let hecho = false;
+
       const guardar = () => {
+        if (hecho) return;
         const n = nombre.value.trim();
         const a = leerHora(ini), z = leerHora(fin);
         if (!n) { showModalError("Ponle un nombre al bloque"); nombre.focus(); return; }
         if (a === null || z === null) { showModalError("Falta la hora de inicio o la de fin"); return; }
         if (a === z) { showModalError("La hora de fin tiene que ser distinta de la de inicio"); fin.focus(); return; }
+        hecho = true;
         const repite = dias.length > 0;
         const nuevo = {
           id: b.id || nuevoIdBloque(),
           nombre: n.slice(0, 40),
-          emoji: icono.value.trim().slice(0, 8),
+          emoji: recortarIcono(icono.value.trim()),
           inicio: a, fin: z, color: color,
           foco: q("#peFoco").checked,
           // Un bloque que deja de repetirse se queda en el día que estás
@@ -5427,7 +5606,9 @@ function abrirEditorBloque(bloque, rango) {
       wireButton(q("#peSave"), guardar);
 
       if (!esNuevo) wireButton(q("#peBorrar"), () => {
+        if (hecho) return;
         if (!seRepite(b)) {
+          hecho = true;
           borrarBloque(b.id);
           close();
           renderPlan();
@@ -5444,6 +5625,8 @@ function abrirEditorBloque(bloque, rango) {
           '<button class="btn btn-borrar" id="peTodos">Todos los días</button>' +
           '<button class="btn btn-ghost" id="peNo">Cancelar</button>';
         wireButton(q("#peSoloEste"), () => {
+          if (hecho) return;
+          hecho = true;
           const actual = plan.bloques[b.id];
           if (actual && !actual.borrado) {
             guardarBloque(Object.assign({}, actual, { saltar: (actual.saltar || []).concat([key]) }));
@@ -5453,6 +5636,8 @@ function abrirEditorBloque(bloque, rango) {
           toast("Quitado solo el " + fechaCorta, true);
         });
         wireButton(q("#peTodos"), () => {
+          if (hecho) return;
+          hecho = true;
           borrarBloque(b.id);
           close();
           renderPlan();
@@ -5476,10 +5661,9 @@ montarReloj();
 cablearAro();
 render();
 if (session && !sessionPausada()) { startTicking(); acquireWakeLock(); }
-loadAsync();
-// Primero se junta lo de IndexedDB y después se sincroniza con la cuenta,
-// para no subir un plan a medias.
-cargarPlanAsync().then(sincronizarPlan);
+// Primero se junta lo de IndexedDB (registro y plan) y después se
+// sincroniza con la cuenta, para no subir nada a medias.
+Promise.all([loadAsync(), cargarPlanAsync()]).catch(() => {}).then(sincronizarCuenta);
 requestPersistence();
 renderRanking();
 
@@ -5654,7 +5838,7 @@ document.addEventListener("visibilitychange", () => {
   refrescarPresencia();
   if (session && !sessionPausada()) { acquireWakeLock(); startTicking(); }
   // Al volver a la app se trae lo que hayas cambiado en otro dispositivo.
-  sincronizarPlan();
+  sincronizarCuenta();
   // Latido inmediato al volver: si no, el grupo te vería desconectado
   // durante casi un minuto después de desbloquear el móvil.
   if (group && supaReady()) ciclo({});
