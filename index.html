@@ -596,9 +596,13 @@
     padding: calc(18px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right))
              calc(18px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
     justify-content: center; gap: 14px;
-    animation: fadeIn .2s var(--ease);
   }
-  body.plan-grande #planCard .plan-head { width: 100%; max-width: 980px; margin: 0 auto; }
+  /* Guarda el sitio de la tarjeta mientras está en grande: sin él, el
+     calendario subía a ocupar el hueco y se le veía moverse por detrás
+     mientras la tarjeta crecía o volvía. */
+  .plan-hueco { pointer-events: none; }
+  body.plan-grande #planCard .plan-head,
+  body.plan-grande #planCard .plan-aviso { width: 100%; max-width: 980px; margin: 0 auto; }
   body.plan-grande #planCard .plan-dial { width: min(100%, calc(100dvh - 110px)); }
   body.plan-grande #planCard .plan-fecha { font-size: 21px; }
 
@@ -650,6 +654,60 @@
   .pd-aguja-halo { stroke: rgba(255,90,95,.28); stroke-width: 9; stroke-linecap: round; pointer-events: none; }
   .pd-luna { fill: var(--accent); pointer-events: none; }
   .pd-sol { fill: #f5b945; stroke: #f5b945; pointer-events: none; }
+
+  /* ---------- tu día: movimiento ----------
+     Sólo transform y opacity, y todo con --ease. Las piezas del aro
+     crecen y encogen desde el centro del reloj (transform-box: view-box),
+     así un bloque "levantado" se separa hacia fuera como si saliera del
+     aro. Con movimiento reducido, la regla global al final del CSS deja
+     todo esto en nada. */
+  .pd-bloque, .pd-fantasma, .pd-sale, .pd-anim { transform-box: view-box; transform-origin: 50% 50%; }
+  /* Un bloque nuevo, o que llega del otro dispositivo, nace sin saltar. */
+  .nace { animation: pdNace .22s var(--ease) both; }
+  @keyframes pdNace { from { opacity: 0; transform: scale(.97); } }
+  /* Al cambiar de día sólo hay un fundido: es algo que se hace a menudo. */
+  .aparece { animation: pdAparece .12s var(--ease) both; }
+  @keyframes pdAparece { from { opacity: 0; } }
+  /* Lo que ya no está se va en su sitio; se queda invisible hasta el
+     siguiente dibujado. */
+  .pd-sale {
+    fill-opacity: .3; stroke-width: 1.6; pointer-events: none;
+    animation: pdSale .18s var(--ease) forwards;
+  }
+  @keyframes pdSale { to { opacity: 0; transform: scale(.98); } }
+  /* Coger un bloque: se levanta una vez y se queda levantado mientras se
+     arrastra. Los redibujados del arrastre usan .moviendo, sin animación,
+     para no parpadear a cada cuarto de hora. */
+  .levantando { animation: pdLevanta .16s var(--ease) forwards; }
+  @keyframes pdLevanta { from { transform: scale(1); } to { transform: scale(1.035); } }
+  .moviendo { transform: scale(1.035); }
+  .pd-bloque.levantando, .pd-bloque.moviendo { fill-opacity: .55; }
+  /* Soltarlo: se posa. */
+  .asentando { animation: pdAsienta .18s var(--ease) both; }
+  @keyframes pdAsienta { from { transform: scale(1.035); } to { transform: scale(1); } }
+  /* Mantener el dedo: un anillo crece bajo él durante la espera. Lineal,
+     porque es el tramo en que decides; en el iPhone la web no puede
+     vibrar y esto es lo único que dice "ya puedes arrastrar". */
+  .pd-pulso {
+    fill: var(--accent); fill-opacity: .16; stroke: var(--accent); stroke-width: 1.6;
+    pointer-events: none; transform-box: fill-box; transform-origin: center;
+    animation: pdPulso .3s linear both;
+  }
+  @keyframes pdPulso { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+  /* El centro, cuando su contenido cambia de verdad. */
+  .plan-centro.cambia { animation: pdCentro .16s var(--ease); }
+  @keyframes pdCentro { from { opacity: .35; } }
+
+  /* Sin sesión, el plan sólo vive en este dispositivo: se dice, porque
+     si no parece que se sincroniza y no sale en el móvil. */
+  .plan-aviso {
+    display: flex; align-items: center; gap: 6px; margin-top: -4px;
+    font-size: 12px; color: var(--dim);
+    animation: rowIn .22s var(--ease) both;
+  }
+  .plan-aviso[hidden] { display: none; }
+  .plan-aviso span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plan-aviso .link-btn { flex-shrink: 0; color: var(--accent); font-weight: 600; }
   @media (hover: hover) and (pointer: fine) {
     .plan-nav:hover { color: var(--text); background: var(--panel-2); }
     .plan-nav.mas:hover { background: #4a67e8; }
@@ -1265,6 +1323,7 @@
     #planCard .plan-nav { width: 34px; height: 34px; }
     body.plan-grande #planCard .plan-nav { width: 40px; height: 40px; }
     #planCard .plan-dial { width: min(100%, 40dvh); }
+    .plan-hueco { grid-column: 1; grid-row: 2; }
     #planCard .plan-fecha { font-size: clamp(15px, 1.15vw, 19px); }
     #planCard .eyebrow, #planCard .plan-volver { font-size: clamp(10.5px, .78vw, 13px); }
 
@@ -1530,6 +1589,7 @@
       <button type="button" class="plan-nav plan-ampliar" id="planGrande" aria-label="Ver en grande"
               aria-pressed="false" title="Ver en grande">⤢</button>
     </div>
+    <div class="plan-aviso" id="planAviso" hidden></div>
   </section>
 
   <!-- ===================== gente y ranking =====================
@@ -3835,6 +3895,7 @@ function renderSocial() {
 function renderGroupChip() {
   renderCuentaChip();
   renderSocial();
+  pintarAvisoPlan();
   const chip = $("groupChip");
   if (!supaReady()) { chip.style.display = "none"; return; }
   chip.style.display = "";
@@ -4782,6 +4843,9 @@ subirSelloPlan(plan);
 let planDia = dateKey(new Date());
 let planSigueHoy = true;           // al pasar la medianoche, el aro se va con el día
 let planArrastre = null;
+let planVisto = null;              // lo del último dibujado: { dia, bloques: Map id → {inicio, fin, color} }
+let planAsentar = null;            // id del bloque recién soltado, que se posa en el siguiente dibujado
+let centroPintado = null;          // HTML del centro tal como se escribió la última vez
 
 function guardarPlanLocal() {
   plan = fusionarPlan(normalizarPlan(readJSON(K.PLAN)), plan);
@@ -5001,6 +5065,7 @@ function renderPlan() {
   if (planSigueHoy && planDia !== hoy) planDia = hoy;
   planSigueHoy = planDia === hoy;
   pintarCabeceraPlan(hoy);
+  pintarAvisoPlan();
   // Bajo el dedo no se repinta: un render() a destiempo (otra pestaña, la
   // medianoche) tiraría el bloque que se está arrastrando.
   if (planArrastre) return;
@@ -5035,22 +5100,57 @@ function dibujarPlan(arr) {
   let s = '<path class="pd-aro" fill-rule="evenodd" d="' + circuloD(PD.aro) + circuloD(PD.dentro) + '"></path>' +
           '<circle class="pd-disco" cx="' + PD.c + '" cy="' + PD.c + '" r="' + PD.dentro + '"></circle>';
 
+  /* Sólo se anima lo que cambia respecto al último dibujado: lo nuevo
+     nace, lo que ya no está se va, y lo que cambia de hora hace las dos
+     cosas. Ni en el primer dibujado (la tarjeta ya tiene su entrada) ni
+     mientras se arrastra: ahí se va guardando la posición provisional,
+     y así al soltar no hay un fundido falso, sólo el bloque que se posa. */
+  const antes = planVisto;
+  const animar = !!antes && !arr && !sinMovimiento.matches;
+  const otroDia = animar && antes.dia !== key;
+  const levantar = !!arr && !arr.dibujado;
+  const visto = new Map();
+
   // Los nombres se escriben al final, por encima de la aguja: si no, a la
   // hora en punto la aguja tapaba justo el bloque que toca ahora.
-  let textos = "";
+  let bloquesSvg = "", textos = "";
   lista.forEach((original, i) => {
     const mueve = arr && arr.modo === "mover" && arr.bloque.id === original.id && arr.rango;
     const b = mueve ? Object.assign({}, original, arr.rango) : original;
     const dur = duracion(b);
-    s += '<path class="pd-bloque' + (mueve ? " moviendo" : "") + '" data-id="' + escapeHtml(b.id) + '"' +
+    let anim = "";
+    if (mueve) anim = levantar ? "levantando" : "moviendo";
+    else if (animar) {
+      const previo = antes.bloques.get(b.id);
+      anim = otroDia ? "aparece"
+           : (!previo || previo.inicio !== b.inicio || previo.fin !== b.fin) ? "nace"
+           : planAsentar === b.id ? "asentando" : "";
+    }
+    visto.set(b.id, { inicio: b.inicio, fin: b.fin, color: b.color });
+    bloquesSvg += '<path class="pd-bloque' + (anim ? " " + anim : "") + '" data-id="' + escapeHtml(b.id) + '"' +
          ' tabindex="0" role="button" aria-label="' + escapeHtml(etiquetaBloque(b)) + '"' +
          ' style="fill:' + b.color + ";stroke:" + b.color + '"' +
          ' d="' + sectorD(b.inicio, dur, PD.dentro + 1, PD.aro - 1) + '"></path>';
-    textos += textoBloque(b, dur, i);
+    // El nombre se mueve con su bloque: si no, al levantarlo se quedaría
+    // descolocado.
+    const texto = textoBloque(b, dur, i);
+    textos += anim && texto ? '<g class="pd-anim ' + anim + '">' + texto + "</g>" : texto;
   });
 
+  // Lo que había y ya no está (o estaba en otra hora) se va desde su sitio,
+  // por debajo de lo nuevo.
+  if (animar && !otroDia) {
+    antes.bloques.forEach((v, id) => {
+      const ahora = visto.get(id);
+      if (ahora && ahora.inicio === v.inicio && ahora.fin === v.fin) return;
+      s += '<path class="pd-sale" style="fill:' + v.color + ";stroke:" + v.color + '"' +
+           ' d="' + sectorD(v.inicio, duracion(v), PD.dentro + 1, PD.aro - 1) + '"></path>';
+    });
+  }
+  s += bloquesSvg;
+
   if (arr && arr.modo === "crear" && arr.rango) {
-    s += '<path class="pd-fantasma" d="' +
+    s += '<path class="pd-fantasma ' + (levantar ? "levantando" : "moviendo") + '" d="' +
          sectorD(arr.rango.inicio, duracion(arr.rango), PD.dentro + 1, PD.aro - 1) + '"></path>';
   }
 
@@ -5093,6 +5193,9 @@ function dibujarPlan(arr) {
   }
 
   svg.innerHTML = s + textos;
+  planVisto = { dia: key, bloques: visto };
+  planAsentar = null;
+  if (arr) arr.dibujado = true;
   if (esHoy) moverAguja();
   if (enfocado) {
     const otra = svg.querySelector('.pd-bloque[data-id="' + CSS.escape(enfocado) + '"]');
@@ -5162,14 +5265,46 @@ function pintarCentroPlan() {
         : "Nada más por hoy") + "</div>";
     }
   }
-  $("planCentro").innerHTML = html;
+  ponerCentro(html, true);
 }
 
 function pintarCentroArrastre(r, titulo) {
-  $("planCentro").innerHTML =
+  // Mientras se arrastra, el rango se tiene que leer al instante: sin fundido.
+  ponerCentro(
     '<div class="pc-total">' + titulo + "</div>" +
     '<div class="pc-rango">' + fmtHora(r.inicio) + "–" + fmtHora(r.fin) + "</div>" +
-    '<div class="pc-total">' + fmtMinutes(duracion(r)) + "</div>";
+    '<div class="pc-total">' + fmtMinutes(duracion(r)) + "</div>", false);
+}
+
+/* Escribe el centro sólo si ha cambiado, y entonces con un fundido corto.
+   El repintado de cada 20 s casi siempre trae lo mismo: ni se toca. */
+function ponerCentro(html, animar) {
+  if (html === centroPintado) return;
+  const el = $("planCentro");
+  const habia = centroPintado !== null;
+  centroPintado = html;
+  el.innerHTML = html;
+  if (!animar || !habia || sinMovimiento.matches) return;
+  el.classList.remove("cambia");
+  void el.offsetWidth;              // reinicia la animación
+  el.classList.add("cambia");
+}
+
+/* Sin sesión el plan no sube a la cuenta, y lo que pones aquí no sale en
+   el móvil. Antes no se decía en ningún sitio: el ordenador se quedó sin
+   sesión (el proyecto de Supabase se pausó) y los hábitos no llegaban. */
+function pintarAvisoPlan() {
+  const el = $("planAviso");
+  if (!el) return;
+  const mostrar = supaReady() && !sesionIniciada();
+  if (mostrar === !el.hidden) return;   // sin cambios: la entrada no se repite
+  el.hidden = !mostrar;
+  if (!mostrar) { el.innerHTML = ""; return; }
+  el.innerHTML =
+    '<span title="Estos hábitos solo están en este dispositivo: entra con tu cuenta para verlos también en el móvil">' +
+      "Solo se guarda en este dispositivo</span>" +
+    '<button type="button" class="link-btn" id="planAvisoEntrar">Entrar</button>';
+  wireButton($("planAvisoEntrar"), openCuenta);
 }
 
 function irADiaPlan(key) {
@@ -5231,6 +5366,8 @@ function soltarAro(e, cancelado) {
   if (!a || e.pointerId !== a.puntero) return;
   planArrastre = null;
   clearTimeout(a.espera);
+  // Un bloque que se llegó a levantar se posa al soltarlo, pase lo que pase.
+  if (a.modo === "mover" && a.dibujado) planAsentar = a.bloque.id;
   if (cancelado) { renderPlan(); return; }
 
   if (a.modo === "crear") {
@@ -5257,8 +5394,22 @@ function soltarAro(e, cancelado) {
         (seRepite(a.bloque) ? " · " + textoRepite(a.bloque.dias).toLowerCase() : ""));
 }
 
-function ponerPlanGrande(si) {
-  document.body.classList.toggle("plan-grande", si);
+/* La vista grande se abre desde el sitio de la tarjeta y vuelve a él.
+   Con clip-path y no con scale: escalar una tarjeta de 300×350 hasta la
+   pantalla entera deformaría el texto. La tarjeta pasa ya a pantalla
+   completa, recortada al rectángulo que ocupaba, y el recorte se abre;
+   el contenido aparece a la vez. Cerrar es lo mismo al revés y algo más
+   rápido. Si se pulsa a medias, la animación nueva sale del punto en que
+   iba la vieja. */
+let planGrande = false;            // lo que se ha pedido; la clase dura lo que dura el cierre
+let planGrandeAnims = [];
+let planGrandeRadio = 24;
+let planGrandeSeq = 0;
+
+function ponerPlanGrande(si, sinAnimar) {
+  if (si === planGrande) return;
+  planGrande = si;
+  const card = $("planCard");
   const boton = $("planGrande");
   boton.textContent = si ? "✕" : "⤢";
   boton.title = si ? "Volver" : "Ver en grande";
@@ -5268,6 +5419,76 @@ function ponerPlanGrande(si) {
   try {
     history.replaceState(null, "", location.pathname + location.search + (si ? "#dia" : ""));
   } catch (e) { /* sin history, sólo no se recuerda */ }
+
+  const contenido = Array.from(card.children);
+  // Si otra animación iba a medias, se parte de donde estaba.
+  const aMedias = planGrandeAnims.length > 0;
+  const clipAhora = aMedias ? getComputedStyle(card).clipPath : null;
+  const estadoAhora = aMedias ? contenido.map((el) => {
+    const cs = getComputedStyle(el);
+    return { opacity: cs.opacity, transform: cs.transform === "none" ? "scale(1)" : cs.transform };
+  }) : null;
+  const seq = ++planGrandeSeq;
+  planGrandeAnims.forEach((an) => an.cancel());
+  planGrandeAnims = [];
+
+  let hueco = document.querySelector(".plan-hueco");
+  let origen;
+  if (si && !hueco) {
+    origen = card.getBoundingClientRect();
+    planGrandeRadio = parseFloat(getComputedStyle(card).borderTopLeftRadius) || 24;
+    hueco = document.createElement("div");
+    hueco.className = "plan-hueco";
+    hueco.style.height = origen.height + "px";   // con decimales: si se redondea, el calendario baila un poco
+    card.parentNode.insertBefore(hueco, card);
+    document.body.classList.add("plan-grande");
+  } else {
+    origen = hueco ? hueco.getBoundingClientRect() : card.getBoundingClientRect();
+  }
+
+  const cerrar = () => {
+    if (seq !== planGrandeSeq) return;
+    document.body.classList.remove("plan-grande");
+    if (hueco) hueco.remove();
+    planGrandeAnims.forEach((an) => an.cancel());
+    planGrandeAnims = [];
+  };
+  if (sinAnimar) { if (!si) cerrar(); return; }
+
+  // Al abrir, fill "backwards" (el estado inicial vale ya durante el
+  // retraso y al acabar manda el CSS); al cerrar, "forwards" hasta que se
+  // quita la clase, o se vería un fotograma a pantalla completa.
+  const relleno = si ? "backwards" : "forwards";
+  if (sinMovimiento.matches) {
+    // Movimiento reducido: sólo un fundido, sin crecer ni encoger.
+    planGrandeAnims.push(card.animate(
+      [{ opacity: si ? 0 : 1 }, { opacity: si ? 1 : 0 }],
+      { duration: 150, easing: "linear", fill: relleno }));
+  } else {
+    const ease = getComputedStyle(document.documentElement).getPropertyValue("--ease").trim() || "ease-out";
+    const duracion = si ? 320 : 240;
+    const caja = card.getBoundingClientRect();
+    const recorte = "inset(" + Math.max(0, origen.top - caja.top) + "px " +
+      Math.max(0, caja.right - origen.right) + "px " + Math.max(0, caja.bottom - origen.bottom) + "px " +
+      Math.max(0, origen.left - caja.left) + "px round " + planGrandeRadio + "px)";
+    const lleno = "inset(0px 0px 0px 0px round 0px)";
+    planGrandeAnims.push(card.animate(
+      [{ clipPath: clipAhora || (si ? recorte : lleno) }, { clipPath: si ? lleno : recorte }],
+      { duration: duracion, easing: ease, fill: relleno }));
+    contenido.forEach((el, i) => {
+      const desde = estadoAhora ? estadoAhora[i] : (si ? { opacity: 0, transform: "scale(.97)" } : { opacity: 1, transform: "scale(1)" });
+      planGrandeAnims.push(el.animate(
+        [desde, si ? { opacity: 1, transform: "scale(1)" } : { opacity: 0, transform: "scale(.97)" }],
+        // Al abrir, cabecera y aro entran escalonados; al salir, a la vez.
+        { duration: duracion, easing: ease, fill: relleno, delay: si && !estadoAhora ? 40 * i : 0 }));
+    });
+  }
+  const todas = planGrandeAnims.slice();
+  Promise.all(todas.map((an) => an.finished)).then(() => {
+    if (seq !== planGrandeSeq) return;
+    if (si) planGrandeAnims = [];
+    else cerrar();
+  }).catch(() => { /* cancelada por otra: la nueva manda */ });
 }
 
 /* En táctil, arrastrar pide dejar el dedo quieto un instante. Antes
@@ -5319,6 +5540,12 @@ function cablearAro() {
       return;
     }
 
+    // Bajo el dedo crece un anillo mientras dura la espera. El siguiente
+    // dibujado lo quita solo; si el dedo se va a hacer scroll, se quita a mano.
+    const bajo = puntoAro(clamp(p.r, PD.dentro + 10, PD.aro - 10), p.min);
+    svg.insertAdjacentHTML("beforeend",
+      '<circle class="pd-pulso" cx="' + redondo(bajo[0]) + '" cy="' + redondo(bajo[1]) + '" r="15"></circle>');
+
     a.espera = setTimeout(() => {
       if (planArrastre !== a) return;
       a.listo = true;
@@ -5341,6 +5568,7 @@ function cablearAro() {
       if (Math.hypot(e.clientX - a.x0, e.clientY - a.y0) > 10) {
         clearTimeout(a.espera);
         planArrastre = null;
+        svg.querySelectorAll(".pd-pulso").forEach((n) => n.remove());
         try { toque.releasePointerCapture(e.pointerId); } catch (err) { /* ya estaba suelto */ }
       }
       return;
@@ -5411,13 +5639,14 @@ function cablearAro() {
 
   wireButton($("planPrev"), () => moverDiaPlan(-1));
   wireButton($("planNext"), () => moverDiaPlan(1));
-  wireButton($("planGrande"), () => ponerPlanGrande(!document.body.classList.contains("plan-grande")));
+  wireButton($("planGrande"), () => ponerPlanGrande(!planGrande));
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !closeModal && document.body.classList.contains("plan-grande")) ponerPlanGrande(false);
+    if (e.key === "Escape" && !closeModal && planGrande) ponerPlanGrande(false);
   });
   // Con #dia en la dirección, la app se abre ya con el día en grande: así
-  // se puede tener en una pestaña aparte o en marcadores.
-  if (location.hash === "#dia") ponerPlanGrande(true);
+  // se puede tener en una pestaña aparte o en marcadores. Sin animación:
+  // la página acaba de cargar y no hay de dónde venir.
+  if (location.hash === "#dia") ponerPlanGrande(true, true);
   wireButton($("planAdd"), () => {
     // Hoy, desde la próxima media hora; otro día, desde las nueve.
     const ini = planDia === dateKey(new Date()) ? Math.ceil(minutoAhora() / 30) * 30 : 9 * 60;
