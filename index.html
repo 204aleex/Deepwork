@@ -549,6 +549,171 @@
     transition: color .2s, background .2s;
   }
 
+  /* ---------- tu dia: el aro de 24 horas ----------
+     Un reloj de un dia entero con las 00 arriba y las 12 abajo. Los
+     bloques son sectores del aro; la aguja roja es ahora. Todo el dibujo
+     va en un SVG de 400 de lado y escala solo, y el texto del centro va en
+     cqw por lo mismo que el reloj de aletas: entra igual en un movil que
+     en la columna del escritorio. */
+  .plan { display: flex; flex-direction: column; gap: 12px; }
+  .plan-head { display: flex; align-items: center; gap: 8px; }
+  .plan-quien { flex: 1; min-width: 0; }
+  .plan-quien .eyebrow { margin-bottom: 2px; }
+  .plan-volver {
+    background: none; border: none; padding: 4px 6px; margin: -4px -6px -2px;
+    border-radius: 6px; font-family: inherit; cursor: pointer;
+    font-size: 11px; letter-spacing: .14em; color: var(--accent); font-weight: 700;
+  }
+  .plan-volver:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .plan-fecha {
+    margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .plan-tools { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .plan-nav {
+    width: 38px; height: 38px; flex-shrink: 0; padding: 0;
+    display: grid; place-items: center;
+    border-radius: 99px; border: 1px solid var(--line-2); background: var(--panel);
+    color: var(--muted); font-family: inherit; font-size: 18px; line-height: 1;
+    cursor: pointer; touch-action: manipulation;
+    transition: transform .18s var(--spring), background .2s, color .2s;
+  }
+  .plan-nav:active { transform: scale(.92); }
+  .plan-nav:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .plan-nav.mas { background: var(--accent-deep); border-color: transparent; color: #fff; font-size: 22px; }
+
+  .plan-dial {
+    position: relative; width: min(100%, 440px); aspect-ratio: 1;
+    margin: 0 auto; container-type: inline-size;
+  }
+  .plan-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible; user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .pd-aro { fill: var(--flip-bg); cursor: pointer; touch-action: none; }
+  .pd-disco { fill: #111118; pointer-events: none; }
+  .pd-marca { stroke: rgba(255,255,255,.22); stroke-width: 1; pointer-events: none; }
+  .pd-marca.hora { stroke: rgba(255,255,255,.42); stroke-width: 1.4; }
+  .pd-marca.tres { stroke: rgba(255,255,255,.8); stroke-width: 2; }
+  .pd-num {
+    font-family: var(--font-dial); font-size: 12.5px; font-weight: 500;
+    fill: var(--muted); pointer-events: none;
+    paint-order: stroke; stroke: #111118; stroke-width: 3px; stroke-linejoin: round;
+  }
+  .pd-bloque {
+    fill-opacity: .3; stroke-width: 1.6; cursor: grab; touch-action: none;
+    transition: fill-opacity .2s var(--ease);
+  }
+  .pd-bloque:focus { outline: none; }
+  .pd-bloque:focus-visible { stroke-width: 3.4; fill-opacity: .5; }
+  .pd-bloque.moviendo { fill-opacity: .55; cursor: grabbing; }
+  .pd-texto {
+    font-size: 11.5px; font-weight: 600; fill: var(--text); pointer-events: none;
+    letter-spacing: .02em;
+  }
+  .pd-icono { font-size: 13px; pointer-events: none; }
+  .pd-fantasma {
+    fill: var(--accent); fill-opacity: .22; stroke: var(--accent);
+    stroke-width: 1.6; stroke-dasharray: 5 4; pointer-events: none;
+  }
+  .pd-aguja { stroke: #ff5a5f; stroke-width: 3; stroke-linecap: round; pointer-events: none; }
+  .pd-aguja-halo { stroke: rgba(255,90,95,.28); stroke-width: 9; stroke-linecap: round; pointer-events: none; }
+  .pd-luna { fill: var(--accent); pointer-events: none; }
+  .pd-sol { fill: #f5b945; stroke: #f5b945; pointer-events: none; }
+  @media (hover: hover) and (pointer: fine) {
+    .pd-bloque:hover { fill-opacity: .44; }
+    .plan-nav:hover { color: var(--text); background: var(--panel-2); }
+    .plan-nav.mas:hover { background: #4a67e8; }
+  }
+
+  /* El centro es texto normal y no SVG: se lee con lector de pantalla y
+     corta con elipsis. No recibe el puntero para no tapar el aro. */
+  .plan-centro {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 50%; max-height: 50%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.1cqw; text-align: center; pointer-events: none;
+  }
+  .pc-dia {
+    font-size: max(15px, 7cqw); font-weight: 750; letter-spacing: .02em; line-height: 1.05;
+  }
+  .pc-total { font-size: max(10px, 3.5cqw); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pc-lista { width: 100%; display: flex; flex-direction: column; gap: .5cqw; margin-top: 1cqw; }
+  .pc-fila {
+    display: flex; align-items: baseline; gap: 6px;
+    font-size: max(10px, 3.3cqw); font-variant-numeric: tabular-nums;
+  }
+  .pc-fila .n {
+    flex: 1; min-width: 0; text-align: left; font-weight: 650;
+    letter-spacing: .04em; text-transform: uppercase;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pc-fila .v { color: var(--muted); flex-shrink: 0; }
+  .pc-mas { font-size: max(10px, 3cqw); color: var(--dim); }
+  .pc-ahora {
+    margin-top: 1cqw; font-size: max(10.5px, 3.2cqw); color: var(--dim);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pc-ahora b { color: var(--text); font-weight: 650; }
+  .pc-pista { font-size: max(10.5px, 3.2cqw); color: var(--dim); line-height: 1.4; margin-top: 1cqw; }
+  .pc-rango {
+    font-family: var(--font-dial); font-size: max(17px, 7cqw); font-weight: 500;
+    font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  }
+  /* Por debajo de 320px (la columna estrecha del escritorio) el reparto
+     por nombre ya no cabe entre la luna y el sol: se queda lo esencial, y
+     los nombres se siguen leyendo en el propio aro. */
+  @container (max-width: 320px) {
+    .pc-lista, .pc-mas { display: none; }
+  }
+
+  /* ---------- editor de bloque ---------- */
+  .pe-fila { display: flex; gap: 10px; }
+  .pe-campo { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .pe-campo.icono { flex: 0 0 64px; }
+  .pe-campo.icono input { text-align: center; padding-left: 4px; padding-right: 4px; }
+  .pe-campo input[type=time] { text-align: center; }
+  /* Ocho en una fila, repartidas: con el ancho de chip normal saltaban a
+     una segunda fila y dejaban un hueco raro encima de las horas. Va con
+     .modal delante porque .presets, más abajo, pisaría el margen. */
+  .modal .pe-emojis {
+    display: grid; grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 4px; margin: -4px 0 0;
+  }
+  .modal .pe-emojis .chip {
+    font-size: 16px; line-height: 1; padding: 0; min-height: 34px;
+    display: grid; place-items: center;
+  }
+  .pe-nota { font-size: 12px; color: var(--dim); margin-top: -4px; font-variant-numeric: tabular-nums; }
+  .pe-nota.aviso { color: #f5b945; }
+  .pe-colores { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); justify-items: center; }
+  .pe-color {
+    width: 30px; height: 30px; border-radius: 99px; padding: 0; cursor: pointer;
+    border: 2px solid transparent; touch-action: manipulation;
+    box-shadow: inset 0 0 0 2px var(--panel);
+    transition: transform .18s var(--spring), border-color .2s;
+  }
+  .pe-color:active { transform: scale(.9); }
+  .pe-color[aria-checked="true"] { border-color: var(--text); }
+  .pe-color:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pe-dias { display: flex; gap: 5px; }
+  .pe-dia {
+    flex: 1; min-width: 0; height: 36px; padding: 0;
+    border-radius: 10px; border: 1px solid var(--line-2); background: var(--panel-2);
+    color: var(--muted); font-family: inherit; font-size: 12.5px; font-weight: 650;
+    cursor: pointer; touch-action: manipulation;
+    transition: background .2s, color .2s, border-color .2s, transform .18s var(--spring);
+  }
+  .pe-dia:active { transform: scale(.92); }
+  .pe-dia[aria-pressed="true"] { background: var(--accent-deep); border-color: transparent; color: #fff; }
+  .pe-dia:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pe-rep { font-size: 12px; color: var(--dim); margin-top: 7px; }
+  .modal .switch-row { margin-bottom: 0; }
+  .btn-borrar { background: transparent; color: #ff9b9b; border: 1px solid rgba(255,107,107,.3); font-weight: 600; }
+  .pe-confirma { font-size: 12.5px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .modal-actions.col { flex-direction: column; }
+
   /* ---------- tooltip ---------- */
   .tip {
     position: fixed; z-index: 50; pointer-events: none;
@@ -1036,7 +1201,11 @@
       /* Laterales iguales: es lo unico que deja el cuadrado en el centro
          exacto de la pantalla. */
       grid-template-columns: minmax(300px, 1fr) var(--lado) minmax(300px, 1fr);
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      /* aviso / el aro del dia / lo que crece / cuenta y grupo. La fila del
+         aro mide lo que mida su tarjeta; el calendario y el ranking se
+         quedan con el resto. El reloj las cruza todas, asi que su alto
+         sigue siendo la pagina menos un hueco, como antes. */
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
       column-gap: var(--hueco-col);
       row-gap: var(--hueco-fila);
     }
@@ -1054,9 +1223,20 @@
     .topbar { display: none; }
     #noticeSlot { grid-column: 1 / -1; grid-row: 1; }
 
-    /* --- izquierda: el calendario, de arriba abajo --- */
+    /* --- izquierda: el aro del dia arriba, el calendario debajo --- */
+    /* El aro no pasa del 40% del alto: en una pantalla baja el calendario
+       se quedaba en una tira de dos semanas. */
+    #planCard {
+      grid-column: 1; grid-row: 2;
+      padding: clamp(16px, 1.4vw, 22px) clamp(14px, 1.2vw, 22px);
+    }
+    #planCard .plan-head { padding: 0 4px; }
+    #planCard .plan-dial { width: min(100%, 40dvh); }
+    #planCard .plan-fecha { font-size: clamp(15px, 1.15vw, 19px); }
+    #planCard .eyebrow, #planCard .plan-volver { font-size: clamp(10.5px, .78vw, 13px); }
+
     #historyFold {
-      grid-column: 1; grid-row: 2 / span 2;
+      grid-column: 1; grid-row: 3 / span 2;
       min-height: 0; overflow: hidden;
       --cell: 24px; --cell-gap: 5px; --cal-gutter: 36px;
     }
@@ -1080,7 +1260,7 @@
 
     /* --- centro: el reloj, cuadrado --- */
     .stage {
-      grid-column: 2; grid-row: 2 / span 2;
+      grid-column: 2; grid-row: 2 / span 3;
       align-self: center; justify-self: stretch;
       aspect-ratio: 1;
       /* La columna ya mide el cuadrado: aqui solo hay que llenarla. Con
@@ -1143,7 +1323,7 @@
 
     /* --- derecha: ranking arriba, cuenta y grupos abajo --- */
     #rankCard {
-      grid-column: 3; grid-row: 2;
+      grid-column: 3; grid-row: 2 / span 2;
       min-height: 0; overflow: hidden;
       display: flex; flex-direction: column;
       padding: clamp(18px, 1.6vw, 26px) clamp(18px, 1.5vw, 24px) clamp(14px, 1.2vw, 20px);
@@ -1167,7 +1347,7 @@
     #rankCard .sync-line { font-size: clamp(11px, .8vw, 13px); }
 
     #socialCard {
-      grid-column: 3; grid-row: 3;
+      grid-column: 3; grid-row: 4;
       padding: clamp(16px, 1.35vw, 22px) clamp(18px, 1.5vw, 24px) clamp(14px, 1.2vw, 20px);
     }
     #socialCard .rank-head { margin-bottom: 2px; }
@@ -1209,6 +1389,7 @@
     .view-tab { flex: 1; justify-content: center; }
     .stage { padding: 20px 14px 16px; gap: 15px; }
     .soc-acts .btn { min-height: 44px; }
+    .plan-nav { width: 42px; height: 42px; }
     .fold-head { padding: 14px 16px; }
     .fold-body { padding: 0 14px 14px; }
 
@@ -1286,6 +1467,29 @@
 
     <div class="stage-extra" id="stageExtra"></div>
   </main>
+
+  <!-- ===================== tu día: el aro de 24 horas =====================
+       Para organizarte el día: cada bloque es un trozo del aro. Se añade
+       con el +, tocando el aro o arrastrando sobre él; un bloque se mueve
+       arrastrándolo y se edita tocándolo. -->
+  <section class="card plan" id="planCard" aria-labelledby="planFecha">
+    <div class="plan-head">
+      <div class="plan-quien">
+        <div id="planEyebrow"><div class="eyebrow">TU DÍA</div></div>
+        <h2 class="plan-fecha" id="planFecha">Hoy</h2>
+      </div>
+      <div class="plan-tools">
+        <button type="button" class="plan-nav" id="planPrev" aria-label="Día anterior">‹</button>
+        <button type="button" class="plan-nav" id="planNext" aria-label="Día siguiente">›</button>
+        <button type="button" class="plan-nav mas" id="planAdd" aria-label="Añadir un bloque">+</button>
+      </div>
+    </div>
+    <div class="plan-dial" id="planDial">
+      <svg class="plan-svg" id="planSvg" viewBox="0 0 400 400" role="group"
+           aria-label="Reloj de 24 horas con los bloques del día"></svg>
+      <div class="plan-centro" id="planCentro"></div>
+    </div>
+  </section>
 
   <!-- ===================== gente y ranking =====================
        Dos preguntas distintas con una sola petición: Gente contesta
@@ -1387,6 +1591,7 @@ const K = {
   PENDING_LEAVE: "deepwork:leave-pendiente:v1",
   ULTIMO_CICLO:  "deepwork:ultimo-ciclo",
   CUENTA:  "deepwork:cuenta:v1",
+  PLAN:    "deepwork:plan:v1",
   OLD_LOG: "deepwork-log",
   OLD_SES: "deepwork-active-session"
 };
@@ -2115,7 +2320,7 @@ function openGoalEditor() {
 /* --------------------------- copia y datos -------------------------- */
 
 function exportData() {
-  const payload = { app: "deepwork", exportedAt: new Date().toISOString(), version: 2, days: doc.days, prefs: prefs };
+  const payload = { app: "deepwork", exportedAt: new Date().toISOString(), version: 2, days: doc.days, prefs: prefs, plan: plan };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -2137,6 +2342,9 @@ function importData(file) {
       const before = new Set(Object.keys(doc.days));
       doc = mergeDocs(doc, incoming);
       if (raw.prefs && typeof raw.prefs.goal === "number") { prefs.goal = raw.prefs.goal; savePrefs(); }
+      // El plan del día viaja en la misma copia y se fusiona igual, bloque
+      // a bloque: importar nunca borra lo que ya tenías planificado.
+      if (raw.plan) { plan = fusionarPlan(plan, normalizarPlan(raw.plan)); subirSelloPlan(plan); guardarPlan(); }
       persist();
       render();
       const added = Object.keys(doc.days).filter((k) => !before.has(k)).length;
@@ -2196,6 +2404,7 @@ function render() {
   updateStats();
   updateGoal();
   updateSummary();
+  renderPlan();
   renderRanking();
 }
 
@@ -4347,15 +4556,815 @@ function openLeave() {
   );
 }
 
+/* =====================================================================
+   Tu día: el aro de 24 horas
+   ---------------------------------------------------------------------
+   Un plan del día con forma de reloj: las 00 arriba, las 12 abajo, y cada
+   bloque es un trozo del aro. Vive sólo en el dispositivo, igual que el
+   registro, y se guarda con el mismo truco para no perder nada: cada
+   bloque lleva su sello, borrar deja una lápida en vez de hacerlo
+   desaparecer, y dos copias se fusionan bloque a bloque quedándose con la
+   escritura más reciente. Sin lápida, una copia vieja resucitaría lo
+   borrado al fusionar.
+
+   Un bloque es de un día concreto (fecha) o se repite ciertos días de la
+   semana (dias, 0 = lunes). Los que se repiten no salen antes del día en
+   que se crearon (desde) ni en los días que se quitaron sueltos (saltar).
+   Las horas van en minutos desde las 00:00. Si el fin es menor que el
+   inicio, el bloque cruza la medianoche, que en un reloj de 24 horas es
+   lo natural: dormir de 23:00 a 07:00 es un solo trozo del aro.
+   ===================================================================== */
+
+const DIA_MIN = 1440;
+const PASO_MIN = 15;                 // el aro se ajusta a cuartos de hora
+/* Radios en unidades del viewBox (400 de lado): el aro va de `dentro` a
+   `aro`, el nombre de cada bloque corre por `texto` y las horas por `num`,
+   lejos de las marcas del borde para que no se pisen. */
+const PD = { c: 200, aro: 190, dentro: 124, texto: 141, num: 167 };
+const PLAN_COLORES = [
+  { hex: "#7d97ff", nombre: "Azul" },
+  { hex: "#3ddc97", nombre: "Verde" },
+  { hex: "#f5b945", nombre: "Ámbar" },
+  { hex: "#ff7b72", nombre: "Coral" },
+  { hex: "#b69cff", nombre: "Lila" },
+  { hex: "#34d4c4", nombre: "Turquesa" },
+  { hex: "#f685c4", nombre: "Rosa" },
+  { hex: "#a3a3b8", nombre: "Gris" }
+];
+const PLAN_EMOJIS = ["📚", "💻", "🧠", "🏋️", "🍽️", "😴", "🚶", "☕"];
+const DIAS_LETRA = ["L", "M", "X", "J", "V", "S", "D"];
+const DIAS_NOMBRE = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+const DIAS_PLURAL = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábados", "domingos"];
+
+const envolver = (m) => ((m % DIA_MIN) + DIA_MIN) % DIA_MIN;
+const redondo = (n) => Math.round(n * 100) / 100;
+
+function planVacio() { return { version: 1, bloques: {}, updatedAt: 0 }; }
+
+/* Todo lo que entra se revisa: puede venir de un JSON importado, y el
+   color acaba dentro de un atributo. */
+function normalizarPlan(raw) {
+  const p = planVacio();
+  if (!raw || typeof raw !== "object" || !raw.bloques || typeof raw.bloques !== "object") return p;
+  p.updatedAt = Number(raw.updatedAt) || 0;
+  for (const id in raw.bloques) {
+    // Los ids que crea la app son base 36. Filtrar el resto deja fuera de
+    // paso claves como "__proto__", que asignada a un objeto le cambia el
+    // prototipo en vez de guardar un bloque.
+    if (!/^[a-z0-9]{1,40}$/i.test(id)) continue;
+    const b = raw.bloques[id];
+    if (!b || typeof b !== "object") continue;
+    if (b.borrado) { p.bloques[id] = { id: id, borrado: true, t: Number(b.t) || 0 }; continue; }
+    const ini = Math.round(Number(b.inicio)), fin = Math.round(Number(b.fin));
+    if (!(ini >= 0 && ini < DIA_MIN && fin >= 0 && fin < DIA_MIN) || ini === fin) continue;
+    const dias = Array.isArray(b.dias)
+      ? b.dias.map(Number).filter((d, i, a) => d >= 0 && d <= 6 && a.indexOf(d) === i).sort((x, y) => x - y)
+      : [];
+    p.bloques[id] = {
+      id: id,
+      nombre: String(b.nombre || "").slice(0, 40),
+      emoji: String(b.emoji || "").slice(0, 8),
+      inicio: ini,
+      fin: fin,
+      color: /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : PLAN_COLORES[0].hex,
+      foco: !!b.foco,
+      fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha) ? b.fecha : null,
+      dias: dias.length ? dias : null,
+      desde: /^\d{4}-\d{2}-\d{2}$/.test(b.desde) ? b.desde : null,
+      saltar: Array.isArray(b.saltar) ? b.saltar.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)) : [],
+      t: Number(b.t) || 0
+    };
+  }
+  return p;
+}
+
+function fusionarPlan(a, b) {
+  const out = planVacio();
+  out.updatedAt = Math.max(a.updatedAt || 0, b.updatedAt || 0);
+  const ids = new Set(Object.keys(a.bloques).concat(Object.keys(b.bloques)));
+  ids.forEach((id) => {
+    const x = a.bloques[id], y = b.bloques[id];
+    out.bloques[id] = !x ? y : !y ? x : ((y.t || 0) > (x.t || 0) ? y : x);   // empate: gana `a`
+  });
+  return out;
+}
+
+/* Mismo motivo que bumpStampFloor(): un sello del futuro dejaría el bloque
+   congelado, porque cada edición nueva nacería perdiendo la fusión. */
+function subirSelloPlan(p) {
+  for (const id in p.bloques) {
+    const t = p.bloques[id].t || 0;
+    if (t > lastStamp) lastStamp = t;
+  }
+}
+
+let plan = normalizarPlan(readJSON(K.PLAN));
+subirSelloPlan(plan);
+let planDia = dateKey(new Date());
+let planSigueHoy = true;           // al pasar la medianoche, el aro se va con el día
+let planArrastre = null;
+
+function guardarPlan() {
+  plan = fusionarPlan(normalizarPlan(readJSON(K.PLAN)), plan);
+  plan.updatedAt = stamp();
+  const ok = writeJSON(K.PLAN, plan);
+  idbSet("plan", plan);
+  if (!ok) toast("No se ha podido guardar en este navegador", true);
+}
+
+async function cargarPlanAsync() {
+  const deIdb = normalizarPlan(await idbGet("plan"));
+  const junto = fusionarPlan(plan, deIdb);
+  const cambia = JSON.stringify(junto.bloques) !== JSON.stringify(plan.bloques);
+  plan = junto;
+  subirSelloPlan(plan);
+  if (!Object.keys(plan.bloques).length) return;
+  writeJSON(K.PLAN, plan);
+  idbSet("plan", plan);
+  if (cambia) renderPlan();
+}
+
+function guardarBloque(b) {
+  b.t = stamp();
+  plan.bloques[b.id] = b;
+  guardarPlan();
+}
+function borrarBloque(id) {
+  plan.bloques[id] = { id: id, borrado: true, t: stamp() };
+  guardarPlan();
+}
+function nuevoIdBloque() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function duracion(b) { return envolver(b.fin - b.inicio); }
+function seRepite(b) { return !!(b.dias && b.dias.length); }
+function cubre(b, min) { return envolver(min - b.inicio) < duracion(b); }
+/* Dos trozos de un círculo se pisan si uno contiene el principio del otro. */
+function seSolapan(x, y) { return cubre(x, y.inicio) || cubre(y, x.inicio); }
+function fmtHora(min) {
+  const m = envolver(Math.round(min));
+  return pad(Math.floor(m / 60)) + ":" + pad(m % 60);
+}
+function minutoAhora() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60;
+}
+
+function bloquesDe(key) {
+  const dow = (keyToDate(key).getDay() + 6) % 7;   // 0 = lunes
+  const lista = [];
+  for (const id in plan.bloques) {
+    const b = plan.bloques[id];
+    if (!b || b.borrado) continue;
+    if (seRepite(b)) {
+      if (b.dias.indexOf(dow) < 0) continue;
+      if (b.desde && key < b.desde) continue;
+      if (b.saltar && b.saltar.indexOf(key) >= 0) continue;
+    } else if (b.fecha !== key) continue;
+    lista.push(b);
+  }
+  return lista.sort((a, b) => a.inicio - b.inicio || (a.t || 0) - (b.t || 0));
+}
+
+function textoRepite(dias, key) {
+  if (!dias || !dias.length) {
+    return "Solo el " + keyToDate(key).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  }
+  const d = dias.slice().sort((a, b) => a - b);
+  if (d.length === 7) return "Todos los días";
+  if (d.join() === "0,1,2,3,4") return "De lunes a viernes";
+  if (d.join() === "5,6") return "Los fines de semana";
+  const n = d.map((i) => DIAS_PLURAL[i]);
+  return "Los " + (n.length === 1 ? n[0] : n.slice(0, -1).join(", ") + " y " + n[n.length - 1]);
+}
+
+function etiquetaBloque(b) {
+  return (b.nombre || "Bloque") + ", de " + fmtHora(b.inicio) + " a " + fmtHora(b.fin) +
+         (b.foco ? ", trabajo profundo" : "") + (seRepite(b) ? ". " + textoRepite(b.dias) : "");
+}
+
+/* ------------------------- geometría del aro ------------------------ */
+
+function puntoAro(r, min) {
+  const a = (min / DIA_MIN) * 2 * Math.PI;           // 0 arriba, en sentido horario
+  return [PD.c + r * Math.sin(a), PD.c - r * Math.cos(a)];
+}
+const xy = (p) => redondo(p[0]) + " " + redondo(p[1]);
+
+function circuloD(r) {
+  return "M" + (PD.c - r) + " " + PD.c + "a" + r + " " + r + " 0 1 0 " + (2 * r) + " 0" +
+         "a" + r + " " + r + " 0 1 0 " + (-2 * r) + " 0Z";
+}
+function sectorD(ini, dur, r1, r2) {
+  const g = dur > DIA_MIN / 2 ? 1 : 0;
+  return "M" + xy(puntoAro(r2, ini)) + "A" + r2 + " " + r2 + " 0 " + g + " 1 " + xy(puntoAro(r2, ini + dur)) +
+         "L" + xy(puntoAro(r1, ini + dur)) + "A" + r1 + " " + r1 + " 0 " + g + " 0 " + xy(puntoAro(r1, ini)) + "Z";
+}
+/* El nombre corre por un arco. En la mitad de abajo el arco va al revés,
+   de fin a inicio: si no, el texto de las 12 saldría cabeza abajo. */
+function arcoD(ini, dur, r, alReves) {
+  const g = dur > DIA_MIN / 2 ? 1 : 0;
+  const a = puntoAro(r, ini), z = puntoAro(r, ini + dur);
+  return alReves
+    ? "M" + xy(z) + "A" + r + " " + r + " 0 " + g + " 0 " + xy(a)
+    : "M" + xy(a) + "A" + r + " " + r + " 0 " + g + " 1 " + xy(z);
+}
+
+/* Lo que cabe escrito en un bloque. El ancho de letra es una estimación
+   (a 11,5 px ronda los 6,9); medir cada texto con getComputedTextLength
+   obligaría a pintar dos veces. Si no cabe ni el nombre recortado, queda
+   el icono, derecho, en el centro del bloque. */
+function textoBloque(b, dur, i) {
+  const medio = b.inicio + dur / 2;
+  const abajo = envolver(medio) > 360 && envolver(medio) < 1080;
+  const hueco = PD.texto * (dur / DIA_MIN) * 2 * Math.PI - 12;
+  const letra = 6.9;
+  const letras = Array.from(b.nombre || "");
+  const extra = b.emoji ? 2.4 : 0;
+  const pre = b.emoji ? b.emoji + " " : "";
+
+  let texto = null;
+  if ((letras.length + extra) * letra <= hueco) texto = pre + b.nombre;
+  else {
+    const caben = Math.floor(hueco / letra - extra) - 1;
+    if (caben >= 3) texto = pre + letras.slice(0, caben).join("").trim() + "…";
+  }
+
+  if (texto === null) {
+    if (!b.emoji || hueco < 6) return "";
+    const p = puntoAro(PD.texto, medio);
+    return '<text class="pd-icono" x="' + redondo(p[0]) + '" y="' + redondo(p[1]) +
+           '" dy=".35em" text-anchor="middle">' + escapeHtml(b.emoji) + "</text>";
+  }
+
+  // La línea base se separa del radio medio lo que mide media letra, hacia
+  // fuera o hacia dentro según hacia dónde miren las letras: así el texto
+  // queda centrado en el aro sin depender de dominant-baseline.
+  const id = "pdt" + i;
+  const r = abajo ? PD.texto + 4 : PD.texto - 4;
+  return '<path id="' + id + '" fill="none" d="' + arcoD(b.inicio, dur, r, abajo) + '"></path>' +
+         '<text class="pd-texto"><textPath href="#' + id + '" xlink:href="#' + id +
+         '" startOffset="50%" text-anchor="middle">' + escapeHtml(texto) + "</textPath></text>";
+}
+
+/* ----------------------------- pintado ------------------------------ */
+
+function renderPlan() {
+  if (!$("planSvg")) return;
+  const hoy = dateKey(new Date());
+  if (planSigueHoy && planDia !== hoy) planDia = hoy;
+  planSigueHoy = planDia === hoy;
+  pintarCabeceraPlan(hoy);
+  // Bajo el dedo no se repinta: un render() a destiempo (otra pestaña, la
+  // medianoche) tiraría el bloque que se está arrastrando.
+  if (planArrastre) return;
+  dibujarPlan(null);
+  pintarCentroPlan();
+}
+
+function pintarCabeceraPlan(hoy) {
+  const fecha = keyToDate(planDia);
+  const dif = Math.round((fecha - keyToDate(hoy)) / 86400000);
+  $("planFecha").textContent = capitalize(fecha.toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" }));
+  const rel = dif === 0 ? "TU DÍA · HOY" : dif === 1 ? "MAÑANA" : dif === -1 ? "AYER"
+            : dif > 0 ? "EN " + dif + " DÍAS" : "HACE " + (-dif) + " DÍAS";
+  const slot = $("planEyebrow");
+  if (slot.dataset.rel === rel) return;
+  slot.dataset.rel = rel;
+  slot.innerHTML = dif === 0
+    ? '<div class="eyebrow">' + rel + "</div>"
+    : '<div class="eyebrow"><span style="color:var(--dim)">' + rel + " · </span>" +
+        '<button type="button" class="plan-volver" id="planVolver">VOLVER A HOY</button></div>';
+  if (dif !== 0) wireButton($("planVolver"), () => irADiaPlan(dateKey(new Date())));
+}
+
+function dibujarPlan(arr) {
+  const svg = $("planSvg");
+  const key = planDia;
+  const esHoy = key === dateKey(new Date());
+  const lista = bloquesDe(key);
+  const activo = document.activeElement;
+  const enfocado = activo && svg.contains(activo) ? activo.getAttribute("data-id") : null;
+
+  let s = '<path class="pd-aro" fill-rule="evenodd" d="' + circuloD(PD.aro) + circuloD(PD.dentro) + '"></path>' +
+          '<circle class="pd-disco" cx="' + PD.c + '" cy="' + PD.c + '" r="' + PD.dentro + '"></circle>';
+
+  // Los nombres se escriben al final, por encima de la aguja: si no, a la
+  // hora en punto la aguja tapaba justo el bloque que toca ahora.
+  let textos = "";
+  lista.forEach((original, i) => {
+    const mueve = arr && arr.modo === "mover" && arr.bloque.id === original.id && arr.rango;
+    const b = mueve ? Object.assign({}, original, arr.rango) : original;
+    const dur = duracion(b);
+    s += '<path class="pd-bloque' + (mueve ? " moviendo" : "") + '" data-id="' + escapeHtml(b.id) + '"' +
+         ' tabindex="0" role="button" aria-label="' + escapeHtml(etiquetaBloque(b)) + '"' +
+         ' style="fill:' + b.color + ";stroke:" + b.color + '"' +
+         ' d="' + sectorD(b.inicio, dur, PD.dentro + 1, PD.aro - 1) + '"></path>';
+    textos += textoBloque(b, dur, i);
+  });
+
+  if (arr && arr.modo === "crear" && arr.rango) {
+    s += '<path class="pd-fantasma" d="' +
+         sectorD(arr.rango.inicio, duracion(arr.rango), PD.dentro + 1, PD.aro - 1) + '"></path>';
+  }
+
+  // Marcas cada cuarto de hora, más largas en cada hora y más aún cada
+  // tres, que es donde va el número. Tres trazos en vez de 96 líneas.
+  const marcas = ["", "", ""];
+  for (let q = 0; q < 96; q++) {
+    const tipo = q % 12 === 0 ? 2 : q % 4 === 0 ? 1 : 0;
+    const largo = [4, 7, 11][tipo];
+    marcas[tipo] += "M" + xy(puntoAro(PD.aro - 1, q * 15)) + "L" + xy(puntoAro(PD.aro - 1 - largo, q * 15));
+  }
+  s += '<path class="pd-marca" d="' + marcas[0] + '"></path>' +
+       '<path class="pd-marca hora" d="' + marcas[1] + '"></path>' +
+       '<path class="pd-marca tres" d="' + marcas[2] + '"></path>';
+  for (let h = 0; h < 24; h += 3) {
+    const p = puntoAro(PD.num, h * 60);
+    s += '<text class="pd-num" x="' + redondo(p[0]) + '" y="' + redondo(p[1]) +
+         '" dy=".36em" text-anchor="middle">' + pad(h) + "</text>";
+  }
+
+  // La luna arriba (medianoche) y el sol abajo (mediodía), dentro del disco.
+  const lx = PD.c, ly = PD.c - 100, lr = 8.5;
+  s += '<path class="pd-luna" transform="rotate(-24 ' + lx + " " + ly + ')" d="M' + lx + " " + (ly - lr) +
+       "A" + lr + " " + lr + " 0 1 0 " + lx + " " + (ly + lr) +
+       "A" + (lr * 1.3) + " " + (lr * 1.3) + " 0 0 1 " + lx + " " + (ly - lr) + 'Z"></path>';
+  const sx = PD.c, sy = PD.c + 100;
+  let rayos = "";
+  for (let k = 0; k < 8; k++) {
+    const a = k * Math.PI / 4;
+    rayos += "M" + redondo(sx + 7.5 * Math.sin(a)) + " " + redondo(sy - 7.5 * Math.cos(a)) +
+             "L" + redondo(sx + 11 * Math.sin(a)) + " " + redondo(sy - 11 * Math.cos(a));
+  }
+  s += '<circle class="pd-sol" cx="' + sx + '" cy="' + sy + '" r="4.8"></circle>' +
+       '<path class="pd-sol" d="' + rayos + '" stroke-width="1.7" stroke-linecap="round" fill="none"></path>';
+
+  if (esHoy) {
+    s += '<line class="pd-aguja-halo" id="pdHalo"></line><line class="pd-aguja" id="pdAguja"></line>';
+  }
+
+  svg.innerHTML = s + textos;
+  if (esHoy) moverAguja();
+  if (enfocado) {
+    const otra = svg.querySelector('.pd-bloque[data-id="' + CSS.escape(enfocado) + '"]');
+    if (otra) otra.focus({ preventScroll: true });
+  }
+}
+
+function moverAguja() {
+  const ahora = minutoAhora();
+  const a = puntoAro(PD.dentro - 10, ahora), z = puntoAro(PD.aro + 6, ahora);
+  ["pdHalo", "pdAguja"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.setAttribute("x1", redondo(a[0])); el.setAttribute("y1", redondo(a[1]));
+    el.setAttribute("x2", redondo(z[0])); el.setAttribute("y2", redondo(z[1]));
+  });
+}
+
+function pintarCentroPlan() {
+  const key = planDia;
+  const lista = bloquesDe(key);
+  const dia = keyToDate(key).toLocaleDateString("es-ES", { weekday: "long" }).toUpperCase();
+
+  let total = 0, foco = 0;
+  const grupos = new Map();
+  lista.forEach((b) => {
+    const d = duracion(b);
+    total += d;
+    if (b.foco) foco += d;
+    const k = b.nombre.trim().toLowerCase();
+    const g = grupos.get(k) || { nombre: b.nombre, color: b.color, min: 0 };
+    g.min += d;
+    grupos.set(k, g);
+  });
+  const filas = Array.from(grupos.values()).sort((a, b) => b.min - a.min);
+
+  let html = '<div class="pc-dia">' + escapeHtml(dia) + "</div>";
+  if (!lista.length) {
+    html += '<div class="pc-total">Nada planificado</div>' +
+            '<div class="pc-pista">Toca o arrastra sobre el aro para añadir un bloque</div>';
+  } else {
+    html += '<div class="pc-total">' + fmtMinutes(total) + " planificado" +
+            (foco ? " · " + fmtMinutes(foco) + " de foco" : "") + "</div>";
+    const max = 3;
+    html += '<div class="pc-lista">' + filas.slice(0, max).map((g) =>
+      '<div class="pc-fila"><span class="n" style="color:' + g.color + '">' + escapeHtml(g.nombre) + "</span>" +
+      '<span class="v">' + fmtMinutes(g.min) + "</span></div>").join("") + "</div>";
+    if (filas.length > max) html += '<div class="pc-mas">y ' + (filas.length - max) + " más</div>";
+  }
+
+  // Hoy, además, qué toca ahora o qué viene después.
+  if (key === dateKey(new Date()) && lista.length) {
+    const ahora = minutoAhora();
+    let actual = null;
+    for (let i = lista.length - 1; i >= 0; i--) if (cubre(lista[i], ahora)) { actual = lista[i]; break; }
+    const nombreDe = (b) => escapeHtml((b.emoji ? b.emoji + " " : "") + b.nombre);
+    if (actual) {
+      html += '<div class="pc-ahora">Ahora <b>' + nombreDe(actual) + "</b> · hasta " + fmtHora(actual.fin) + "</div>";
+    } else {
+      const luego = lista.filter((b) => b.inicio > ahora)[0];
+      html += '<div class="pc-ahora">' + (luego
+        ? "Luego <b>" + nombreDe(luego) + "</b> a las " + fmtHora(luego.inicio)
+        : "Nada más por hoy") + "</div>";
+    }
+  }
+  $("planCentro").innerHTML = html;
+}
+
+function pintarCentroArrastre(r, titulo) {
+  $("planCentro").innerHTML =
+    '<div class="pc-total">' + titulo + "</div>" +
+    '<div class="pc-rango">' + fmtHora(r.inicio) + "–" + fmtHora(r.fin) + "</div>" +
+    '<div class="pc-total">' + fmtMinutes(duracion(r)) + "</div>";
+}
+
+function irADiaPlan(key) {
+  planDia = key;
+  planSigueHoy = key === dateKey(new Date());
+  haptic(6);
+  renderPlan();
+}
+function moverDiaPlan(n) {
+  const d = keyToDate(planDia);
+  d.setDate(d.getDate() + n);
+  irADiaPlan(dateKey(d));
+}
+
+/* ---------------------- tocar y arrastrar el aro -------------------- */
+/* Todo va por geometría, no por el elemento pulsado: el ángulo dice la
+   hora y el radio si el dedo está en el aro. Tocar un hueco abre un bloque
+   nuevo de una hora; arrastrar sobre un hueco lo dibuja a medida; tocar un
+   bloque lo abre y arrastrarlo lo mueve. Todo en cuartos de hora. */
+
+function aroDesde(e) {
+  const rect = $("planSvg").getBoundingClientRect();
+  const escala = 400 / rect.width;
+  const x = (e.clientX - rect.left) * escala - PD.c;
+  const y = (e.clientY - rect.top) * escala - PD.c;
+  let a = Math.atan2(x, -y);
+  if (a < 0) a += 2 * Math.PI;
+  return { r: Math.hypot(x, y), min: (a / (2 * Math.PI)) * DIA_MIN };
+}
+function enElAro(p) { return p.r >= PD.dentro - 4 && p.r <= PD.aro + 8; }
+
+function rangoArrastre(a) {
+  if (a.modo === "mover") {
+    const delta = Math.round(a.acum / PASO_MIN) * PASO_MIN;
+    return { inicio: envolver(a.bloque.inicio + delta), fin: envolver(a.bloque.fin + delta) };
+  }
+  // Para crear, el sentido lo decide el dedo: hacia delante el punto de
+  // partida es el inicio; hacia atrás, es el final.
+  const s = Math.round(a.min0 / PASO_MIN) * PASO_MIN;
+  let dur = Math.round((a.min0 + a.acum) / PASO_MIN) * PASO_MIN - s;
+  dur = clamp(dur, -(DIA_MIN - PASO_MIN), DIA_MIN - PASO_MIN) || PASO_MIN;
+  const ini = dur > 0 ? s : s + dur;
+  return { inicio: envolver(ini), fin: envolver(ini + Math.abs(dur)) };
+}
+
+/* Un hueco por defecto: una hora, recortada si choca con el bloque que
+   viene detrás. */
+function huecoDesde(ini, key) {
+  const siguiente = bloquesDe(key)
+    .map((b) => envolver(b.inicio - ini))
+    .filter((d) => d > 0)
+    .sort((a, b) => a - b)[0];
+  const dur = siguiente ? clamp(siguiente, PASO_MIN, 60) : 60;
+  return { inicio: envolver(ini), fin: envolver(ini + dur) };
+}
+
+function soltarAro(e, cancelado) {
+  const a = planArrastre;
+  if (!a || e.pointerId !== a.puntero) return;
+  planArrastre = null;
+  if (cancelado) { renderPlan(); return; }
+
+  if (a.modo === "crear") {
+    // Un toque suelto empieza en la media hora; si esa media hora aún cae
+    // dentro del bloque de antes, en el cuarto, y si no, donde tocaste.
+    const lista = bloquesDe(planDia);
+    const libre = (m) => !lista.some((b) => cubre(b, m));
+    const ini = [30, 15, 5].map((n) => Math.floor(a.min0 / n) * n).find(libre);
+    const r = a.movido && a.rango ? a.rango : huecoDesde(ini === undefined ? Math.round(a.min0) : ini, planDia);
+    renderPlan();
+    abrirEditorBloque(null, r);
+    return;
+  }
+
+  if (!a.movido || !a.rango || a.rango.inicio === a.bloque.inicio) {
+    renderPlan();
+    if (!a.movido) abrirEditorBloque(a.bloque);
+    return;
+  }
+  guardarBloque(Object.assign({}, a.bloque, a.rango));
+  renderPlan();
+  haptic(12);
+  toast((a.bloque.nombre || "Bloque") + " · " + fmtHora(a.rango.inicio) + "–" + fmtHora(a.rango.fin) +
+        (seRepite(a.bloque) ? " · " + textoRepite(a.bloque.dias).toLowerCase() : ""));
+}
+
+function cablearAro() {
+  const svg = $("planSvg");
+
+  svg.addEventListener("pointerdown", (e) => {
+    if (planArrastre || (e.pointerType === "mouse" && e.button !== 0)) return;
+    const p = aroDesde(e);
+    if (!enElAro(p)) return;
+    const lista = bloquesDe(planDia);
+    let bloque = null;
+    for (let i = lista.length - 1; i >= 0; i--) if (cubre(lista[i], p.min)) { bloque = lista[i]; break; }
+    planArrastre = {
+      puntero: e.pointerId, modo: bloque ? "mover" : "crear", bloque: bloque,
+      min0: p.min, prev: p.min, acum: 0, x0: e.clientX, y0: e.clientY,
+      movido: false, rango: null, firma: null
+    };
+    try { svg.setPointerCapture(e.pointerId); } catch (err) { /* sin captura también vale */ }
+    e.preventDefault();
+  });
+
+  svg.addEventListener("pointermove", (e) => {
+    const a = planArrastre;
+    if (!a || e.pointerId !== a.puntero) return;
+    const p = aroDesde(e);
+    // Cerca del centro el ángulo baila con un píxel de nada: se ignora.
+    if (p.r < 40) return;
+    let d = p.min - a.prev;
+    if (d > DIA_MIN / 2) d -= DIA_MIN;
+    else if (d < -DIA_MIN / 2) d += DIA_MIN;
+    a.prev = p.min;
+    a.acum = clamp(a.acum + d, -(DIA_MIN - PASO_MIN), DIA_MIN - PASO_MIN);
+    if (!a.movido) {
+      if (Math.hypot(e.clientX - a.x0, e.clientY - a.y0) < 8) return;
+      a.movido = true;
+    }
+    const r = rangoArrastre(a);
+    const firma = r.inicio + "-" + r.fin;
+    if (firma === a.firma) return;
+    // Sólo se repinta al cambiar de cuarto de hora, no a cada píxel.
+    a.firma = firma;
+    a.rango = r;
+    haptic(4);
+    dibujarPlan(a);
+    pintarCentroArrastre(r, a.modo === "mover" ? escapeHtml(a.bloque.nombre || "Bloque") : "Nuevo bloque");
+  });
+
+  svg.addEventListener("pointerup", (e) => soltarAro(e, false));
+  svg.addEventListener("pointercancel", (e) => soltarAro(e, true));
+  svg.addEventListener("lostpointercapture", (e) => soltarAro(e, true));
+
+  /* touch-action:none en el aro basta en Chrome; Safari no siempre lo
+     respeta en elementos de SVG y el arrastre acababa moviendo la página.
+     Sólo se frena el scroll si el dedo cae en el aro: sobre el centro la
+     página se desplaza como siempre. */
+  svg.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1 && enElAro(aroDesde(e.touches[0]))) e.preventDefault();
+  }, { passive: false });
+
+  svg.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const el = e.target.closest && e.target.closest(".pd-bloque");
+    if (!el) return;
+    e.preventDefault();
+    const b = plan.bloques[el.getAttribute("data-id")];
+    if (b && !b.borrado) abrirEditorBloque(b);
+  });
+
+  wireButton($("planPrev"), () => moverDiaPlan(-1));
+  wireButton($("planNext"), () => moverDiaPlan(1));
+  wireButton($("planAdd"), () => {
+    // Hoy, desde la próxima media hora; otro día, desde las nueve.
+    const ini = planDia === dateKey(new Date()) ? Math.ceil(minutoAhora() / 30) * 30 : 9 * 60;
+    abrirEditorBloque(null, huecoDesde(ini, planDia));
+  });
+
+  // La aguja avanza sola. Sólo se mueven la aguja y el centro: repintar el
+  // aro entero cada medio minuto le quitaría el foco a quien use teclado.
+  setInterval(() => {
+    if (document.visibilityState !== "visible" || planArrastre) return;
+    const hoy = dateKey(new Date());
+    if (planSigueHoy && planDia !== hoy) { renderPlan(); return; }
+    if (planDia !== hoy) return;
+    moverAguja();
+    pintarCentroPlan();
+  }, 20000);
+}
+
+/* --------------------------- editor de bloque ----------------------- */
+
+function colorLibre(key) {
+  const usados = bloquesDe(key).map((b) => b.color.toLowerCase());
+  const libre = PLAN_COLORES.find((c) => usados.indexOf(c.hex.toLowerCase()) < 0);
+  return (libre || PLAN_COLORES[usados.length % PLAN_COLORES.length]).hex;
+}
+
+function abrirEditorBloque(bloque, rango) {
+  const key = planDia;
+  const esNuevo = !bloque;
+  const b = bloque || {
+    id: null, nombre: "", emoji: "", inicio: rango.inicio, fin: rango.fin,
+    color: colorLibre(key), foco: false, fecha: key, dias: null, desde: null, saltar: []
+  };
+  let color = b.color;
+  let dias = (b.dias || []).slice();
+  // Al escribir un nombre que ya usaste, se copian su color y su icono,
+  // salvo que ya los hayas elegido tú.
+  let colorElegido = !esNuevo, iconoElegido = !esNuevo;
+  const fechaCorta = keyToDate(key).toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" });
+
+  openModal(
+    "<h2>" + (esNuevo ? "Nuevo bloque" : "Editar bloque") + "</h2>" +
+    '<div class="sub">' + capitalize(keyToDate(key).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" })) + "</div>" +
+    '<div class="fields">' +
+      '<div class="pe-fila">' +
+        '<label class="pe-campo icono"><span class="field-label">Icono</span>' +
+          '<input class="text" id="peEmoji" maxlength="8" autocomplete="off" value="' + escapeHtml(b.emoji || "") + '" /></label>' +
+        '<label class="pe-campo"><span class="field-label">Nombre</span>' +
+          '<input class="text" id="peNombre" maxlength="40" autocomplete="off" enterkeyhint="done"' +
+          ' placeholder="Estudiar, gimnasio…" value="' + escapeHtml(b.nombre || "") + '" /></label>' +
+      "</div>" +
+      '<div class="presets pe-emojis">' + PLAN_EMOJIS.map((em) =>
+        '<button type="button" class="chip" data-emoji="' + em + '" aria-label="Usar ' + em + '">' + em + "</button>").join("") +
+      "</div>" +
+      '<div class="pe-fila">' +
+        '<label class="pe-campo"><span class="field-label">Empieza</span>' +
+          '<input type="time" id="peIni" step="300" value="' + fmtHora(b.inicio) + '" /></label>' +
+        '<label class="pe-campo"><span class="field-label">Termina</span>' +
+          '<input type="time" id="peFin" step="300" value="' + fmtHora(b.fin) + '" /></label>' +
+      "</div>" +
+      '<div class="pe-nota" id="peNota" aria-live="polite"></div>' +
+      '<div><div class="field-label" id="peColorEt">Color</div>' +
+        '<div class="pe-colores" role="radiogroup" aria-labelledby="peColorEt">' + PLAN_COLORES.map((c) =>
+          '<button type="button" class="pe-color" role="radio" data-color="' + c.hex + '" aria-label="' + c.nombre + '"' +
+          ' style="background:' + c.hex + '"></button>').join("") + "</div></div>" +
+      '<div><div class="field-label" id="peDiasEt">Se repite</div>' +
+        '<div class="pe-dias" role="group" aria-labelledby="peDiasEt">' + DIAS_LETRA.map((l, i) =>
+          '<button type="button" class="pe-dia" data-dia="' + i + '" aria-label="' + capitalize(DIAS_NOMBRE[i]) + '">' + l + "</button>").join("") +
+        '</div><div class="pe-rep" id="peRep"></div></div>' +
+      '<label class="switch-row"><input type="checkbox" id="peFoco"' + (b.foco ? " checked" : "") + " />" +
+        '<span class="switch-text"><b>Trabajo profundo</b><span>Cuenta en las horas de foco que planeas</span></span></label>' +
+    "</div>" +
+    '<div class="modal-actions" id="peAcciones">' +
+      (esNuevo ? "" : '<button class="btn btn-borrar" id="peBorrar">Borrar</button>') +
+      '<button class="btn btn-ghost" id="peCancel">Cancelar</button>' +
+      '<button class="btn btn-primary" id="peSave">Guardar</button>' +
+    "</div>",
+    (close) => {
+      // Se busca dentro de este diálogo: si el anterior aún se está
+      // cerrando, getElementById podría devolver sus campos.
+      const caja = $("modalSlot").lastElementChild;
+      const q = (sel) => caja.querySelector(sel);
+      const nombre = q("#peNombre"), icono = q("#peEmoji"), ini = q("#peIni"), fin = q("#peFin");
+
+      const leerHora = (input) => {
+        const m = /^(\d{1,2}):(\d{2})/.exec(input.value || "");
+        return m ? (Number(m[1]) * 60 + Number(m[2])) % DIA_MIN : null;
+      };
+      const pintarColor = () => caja.querySelectorAll(".pe-color").forEach((el) =>
+        el.setAttribute("aria-checked", String(el.dataset.color.toLowerCase() === color.toLowerCase())));
+      const pintarDias = () => {
+        caja.querySelectorAll(".pe-dia").forEach((el) =>
+          el.setAttribute("aria-pressed", String(dias.indexOf(Number(el.dataset.dia)) >= 0)));
+        q("#peRep").textContent = textoRepite(dias, key);
+      };
+      const pintarNota = () => {
+        const a = leerHora(ini), z = leerHora(fin);
+        const nota = q("#peNota");
+        nota.className = "pe-nota";
+        if (a === null || z === null) { nota.textContent = ""; return; }
+        if (a === z) { nota.className = "pe-nota aviso"; nota.textContent = "Empieza y termina a la misma hora"; return; }
+        const prueba = { inicio: a, fin: z };
+        const choca = bloquesDe(key).filter((o) => o.id !== b.id && seSolapan(o, prueba));
+        let txt = fmtMinutes(duracion(prueba)) + (z !== 0 && z < a ? " · acaba al día siguiente" : "");
+        if (choca.length) {
+          nota.className = "pe-nota aviso";
+          txt += " · se pisa con " + choca.map((o) => o.nombre).join(", ");
+        }
+        nota.textContent = txt;
+      };
+
+      pintarColor();
+      pintarDias();
+      pintarNota();
+
+      caja.querySelectorAll(".pe-emojis .chip").forEach((chip) => {
+        chip.onclick = () => {
+          icono.value = icono.value === chip.dataset.emoji ? "" : chip.dataset.emoji;
+          iconoElegido = true;
+          haptic(6);
+        };
+      });
+      icono.addEventListener("input", () => { iconoElegido = true; });
+      caja.querySelectorAll(".pe-color").forEach((el) => {
+        el.onclick = () => { color = el.dataset.color; colorElegido = true; pintarColor(); haptic(6); };
+      });
+      caja.querySelectorAll(".pe-dia").forEach((el) => {
+        el.onclick = () => {
+          const d = Number(el.dataset.dia);
+          dias = dias.indexOf(d) >= 0 ? dias.filter((x) => x !== d) : dias.concat([d]).sort((x, y) => x - y);
+          pintarDias();
+          haptic(6);
+        };
+      });
+      ini.addEventListener("input", pintarNota);
+      fin.addEventListener("input", pintarNota);
+      nombre.addEventListener("input", () => {
+        const n = nombre.value.trim().toLowerCase();
+        if (!n) return;
+        let igual = null;
+        for (const id in plan.bloques) {
+          const o = plan.bloques[id];
+          if (o && !o.borrado && o.id !== b.id && o.nombre.trim().toLowerCase() === n) { igual = o; break; }
+        }
+        if (!igual) return;
+        if (!colorElegido) { color = igual.color; pintarColor(); }
+        if (!iconoElegido && igual.emoji) icono.value = igual.emoji;
+      });
+
+      const guardar = () => {
+        const n = nombre.value.trim();
+        const a = leerHora(ini), z = leerHora(fin);
+        if (!n) { showModalError("Ponle un nombre al bloque"); nombre.focus(); return; }
+        if (a === null || z === null) { showModalError("Falta la hora de inicio o la de fin"); return; }
+        if (a === z) { showModalError("La hora de fin tiene que ser distinta de la de inicio"); fin.focus(); return; }
+        const repite = dias.length > 0;
+        const nuevo = {
+          id: b.id || nuevoIdBloque(),
+          nombre: n.slice(0, 40),
+          emoji: icono.value.trim().slice(0, 8),
+          inicio: a, fin: z, color: color,
+          foco: q("#peFoco").checked,
+          // Un bloque suelto que pasa a repetirse empieza a contar desde
+          // el día en que estás mirando, y al revés se queda en ese día.
+          fecha: repite ? null : key,
+          dias: repite ? dias.slice() : null,
+          desde: repite ? (b.desde || key) : null,
+          saltar: repite ? (b.saltar || []).slice() : []
+        };
+        guardarBloque(nuevo);
+        close();
+        renderPlan();
+        haptic(12);
+        toast((esNuevo ? "Añadido: " : "Guardado: ") + n + " · " + fmtHora(a) + "–" + fmtHora(z));
+      };
+
+      nombre.addEventListener("keydown", (e) => { if (e.key === "Enter") guardar(); });
+      wireButton(q("#peCancel"), close);
+      wireButton(q("#peSave"), guardar);
+
+      if (!esNuevo) wireButton(q("#peBorrar"), () => {
+        if (!seRepite(b)) {
+          borrarBloque(b.id);
+          close();
+          renderPlan();
+          toast("Bloque borrado", true);
+          return;
+        }
+        // Si se repite, hay que preguntar: lo normal es saltarse un día
+        // suelto, no cargarse la rutina entera.
+        const acciones = q("#peAcciones");
+        acciones.className = "modal-actions col";
+        acciones.innerHTML =
+          '<div class="pe-confirma">Este bloque se repite: ' + escapeHtml(textoRepite(b.dias).toLowerCase()) + ". ¿Qué quieres quitar?</div>" +
+          '<button class="btn btn-borrar" id="peSoloEste">Solo el ' + escapeHtml(fechaCorta) + "</button>" +
+          '<button class="btn btn-borrar" id="peTodos">Todos los días</button>' +
+          '<button class="btn btn-ghost" id="peNo">Cancelar</button>';
+        wireButton(q("#peSoloEste"), () => {
+          const actual = plan.bloques[b.id];
+          if (actual && !actual.borrado) {
+            guardarBloque(Object.assign({}, actual, { saltar: (actual.saltar || []).concat([key]) }));
+          }
+          close();
+          renderPlan();
+          toast("Quitado solo el " + fechaCorta, true);
+        });
+        wireButton(q("#peTodos"), () => {
+          borrarBloque(b.id);
+          close();
+          renderPlan();
+          toast("Bloque borrado de todos los días", true);
+        });
+        wireButton(q("#peNo"), close);
+        q("#peSoloEste").focus();
+      });
+
+      if (esNuevo) nombre.focus();
+    }
+  );
+}
+
 /* ------------------------------ arranque ---------------------------- */
 
 loadSync();
 if (Object.keys(doc.days).length) persist();   // migra el formato antiguo a las claves nuevas
 checkRecovery();
 montarReloj();
+cablearAro();
 render();
 if (session && !sessionPausada()) { startTicking(); acquireWakeLock(); }
 loadAsync();
+cargarPlanAsync();
 requestPersistence();
 renderRanking();
 
@@ -4507,6 +5516,12 @@ document.addEventListener("keydown", (e) => {
 
 // otra pestaña ha guardado: nos ponemos al día sin recargar
 window.addEventListener("storage", (e) => {
+  if (e.key === K.PLAN) {
+    plan = fusionarPlan(plan, normalizarPlan(readJSON(K.PLAN)));
+    subirSelloPlan(plan);
+    renderPlan();
+    return;
+  }
   if (e.key !== K.LOG && e.key !== K.SESSION) return;
   loadSync();
   render();
