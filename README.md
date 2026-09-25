@@ -51,7 +51,8 @@ misma copia de **Exportar** / **Importar**. Con la sesión iniciada (Google o
 correo), el plan **y el registro de días** se guardan además en tu cuenta:
 lo que pones en el ordenador sale en el móvil y al revés, y la app recién
 instalada en el móvil empieza con tu calendario lleno. Para eso hace falta
-la tabla `dw_plans` y la función `dw_cuenta_sync` de `supabase.sql`.
+la tabla `dw_plans` y la función `dw_cuenta_sync` de `supabase.sql`. Sin
+sesión, la tarjeta lo dice ("Solo se guarda en este dispositivo · Entrar").
 
 ## Ranking por grupos (opcional)
 
