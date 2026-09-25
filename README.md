@@ -26,8 +26,8 @@ sobrescribe: nunca pierdes días.
 
 ## Organizar el día
 
-La tarjeta **Tu día** es un reloj de 24 horas (las 00 arriba, las 12
-abajo) donde repartes el día en bloques de colores. La aguja roja marca la
+La tarjeta **Tu día** es un reloj de 24 horas (las 12 del mediodía
+arriba, las 00 abajo) donde repartes el día en bloques de colores. La aguja roja marca la
 hora actual y en el centro sale el total planificado, lo que más tiempo se
 lleva y qué toca ahora.
 
