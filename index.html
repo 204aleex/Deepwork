@@ -4568,8 +4568,10 @@ function openLeave() {
    borrado al fusionar.
 
    Un bloque es de un día concreto (fecha) o se repite ciertos días de la
-   semana (dias, 0 = lunes). Los que se repiten no salen antes del día en
-   que se crearon (desde) ni en los días que se quitaron sueltos (saltar).
+   semana (dias, 0 = lunes). Los que se repiten salen en todos esos días,
+   también hacia atrás, menos en los que se quitaron sueltos (saltar).
+   Antes no salían antes del día en que se crearon: un hábito puesto hoy
+   no aparecía al mirar la semana pasada.
    Las horas van en minutos desde las 00:00. Si el fin es menor que el
    inicio, el bloque cruza la medianoche, que en un reloj de 24 horas es
    lo natural: dormir de 23:00 a 07:00 es un solo trozo del aro.
@@ -4630,7 +4632,6 @@ function normalizarPlan(raw) {
       foco: !!b.foco,
       fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha) ? b.fecha : null,
       dias: dias.length ? dias : null,
-      desde: /^\d{4}-\d{2}-\d{2}$/.test(b.desde) ? b.desde : null,
       saltar: Array.isArray(b.saltar) ? b.saltar.filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)) : [],
       t: Number(b.t) || 0
     };
@@ -4719,7 +4720,6 @@ function bloquesDe(key) {
     if (!b || b.borrado) continue;
     if (seRepite(b)) {
       if (b.dias.indexOf(dow) < 0) continue;
-      if (b.desde && key < b.desde) continue;
       if (b.saltar && b.saltar.indexOf(key) >= 0) continue;
     } else if (b.fecha !== key) continue;
     lista.push(b);
@@ -5164,7 +5164,7 @@ function abrirEditorBloque(bloque, rango) {
   const esNuevo = !bloque;
   const b = bloque || {
     id: null, nombre: "", emoji: "", inicio: rango.inicio, fin: rango.fin,
-    color: colorLibre(key), foco: false, fecha: key, dias: null, desde: null, saltar: []
+    color: colorLibre(key), foco: false, fecha: key, dias: null, saltar: []
   };
   let color = b.color;
   let dias = (b.dias || []).slice();
@@ -5295,11 +5295,10 @@ function abrirEditorBloque(bloque, rango) {
           emoji: icono.value.trim().slice(0, 8),
           inicio: a, fin: z, color: color,
           foco: q("#peFoco").checked,
-          // Un bloque suelto que pasa a repetirse empieza a contar desde
-          // el día en que estás mirando, y al revés se queda en ese día.
+          // Un bloque que deja de repetirse se queda en el día que estás
+          // mirando.
           fecha: repite ? null : key,
           dias: repite ? dias.slice() : null,
-          desde: repite ? (b.desde || key) : null,
           saltar: repite ? (b.saltar || []).slice() : []
         };
         guardarBloque(nuevo);
