@@ -42,7 +42,10 @@ lleva y qué toca ahora.
   horas de foco tienes planificadas.
 
 El plan se guarda en el dispositivo igual que el registro y viaja en la
-misma copia de **Exportar** / **Importar**.
+misma copia de **Exportar** / **Importar**. Con la sesión iniciada (Google o
+correo) se guarda además en tu cuenta: lo que pones en el ordenador sale en
+el móvil y al revés. Para eso hace falta la tabla `dw_plans` y la función
+`dw_plan_sync` de `supabase.sql`.
 
 ## Ranking por grupos (opcional)
 

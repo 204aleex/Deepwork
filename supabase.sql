@@ -54,6 +54,17 @@ create table if not exists public.dw_days (
   primary key (member_id, day)
 );
 
+-- El plan del día ("Tu día") de cada cuenta: una fila por persona con
+-- todos sus bloques en un jsonb { id: bloque }. Cada bloque lleva su
+-- sello `t` y los borrados quedan como lápida, así que el móvil y el
+-- ordenador se fusionan bloque a bloque sin pisarse: gana la escritura
+-- más reciente de cada bloque, no el documento entero.
+create table if not exists public.dw_plans (
+  user_id     uuid primary key references auth.users(id) on delete cascade,
+  bloques     jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now()
+);
+
 -- Apodo único dentro de cada grupo, sin distinguir mayúsculas. Va como
 -- índice y no como `unique (...)` de tabla: Postgres sólo admite
 -- expresiones como lower() en un índice.
@@ -162,10 +173,12 @@ create index if not exists dw_groups_public_idx
 alter table public.dw_groups  enable row level security;
 alter table public.dw_members enable row level security;
 alter table public.dw_days    enable row level security;
+alter table public.dw_plans   enable row level security;
 
 revoke all on table public.dw_groups  from anon, authenticated;
 revoke all on table public.dw_members from anon, authenticated;
 revoke all on table public.dw_days    from anon, authenticated;
+revoke all on table public.dw_plans   from anon, authenticated;
 
 
 -- ============================================================ auxiliares
@@ -954,6 +967,59 @@ as $$
 $$;
 
 
+-- Sube los bloques de este dispositivo, los fusiona con los guardados y
+-- devuelve el resultado, que el dispositivo vuelve a fusionar con lo
+-- suyo: una sola ida y vuelta sirve para subir y para bajar. Sólo con
+-- cuenta, porque el plan es de la persona y no del dispositivo.
+create or replace function public.dw_plan_sync(p_bloques jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $BODY$
+declare
+  v_uid    uuid := auth.uid();
+  v_actual jsonb;
+  v_junto  jsonb;
+begin
+  if v_uid is null then
+    raise exception 'Hace falta iniciar sesión para guardar el plan';
+  end if;
+  if p_bloques is null or jsonb_typeof(p_bloques) <> 'object' then
+    p_bloques := '{}'::jsonb;
+  end if;
+  if octet_length(p_bloques::text) > 1000000 then
+    raise exception 'El plan es demasiado grande';
+  end if;
+
+  -- La fila se crea antes de bloquearla: si el móvil y el ordenador
+  -- sincronizaran a la vez por primera vez, sin esto los dos insertarían
+  -- y el segundo pisaría los bloques del primero.
+  insert into dw_plans (user_id) values (v_uid) on conflict (user_id) do nothing;
+  select bloques into v_actual from dw_plans where user_id = v_uid for update;
+
+  -- Bloque a bloque, el de sello más alto. En empate se queda el guardado.
+  select coalesce(jsonb_object_agg(coalesce(a.key, b.key),
+           case
+             when b.value is null then a.value
+             when a.value is null then b.value
+             when (case when jsonb_typeof(b.value->'t') = 'number' then (b.value->>'t')::numeric else 0 end)
+                > (case when jsonb_typeof(a.value->'t') = 'number' then (a.value->>'t')::numeric else 0 end)
+               then b.value
+             else a.value
+           end), '{}'::jsonb)
+    into v_junto
+    from jsonb_each(coalesce(v_actual, '{}'::jsonb)) a
+    full outer join (
+      select key, value from jsonb_each(p_bloques) where jsonb_typeof(value) = 'object'
+    ) b on a.key = b.key;
+
+  update dw_plans set bloques = v_junto, updated_at = now() where user_id = v_uid;
+  return v_junto;
+end;
+$BODY$;
+
+
 -- ============================================================= permisos
 -- Las funciones son la única puerta; las tablas siguen cerradas.
 -- El `drop` de dw_create_group se llevó su grant por delante, así que
@@ -972,6 +1038,10 @@ grant execute on function public.dw_my_membership()                        to an
 grant execute on function public.dw_kick(uuid, text, uuid)                 to anon, authenticated;
 grant execute on function public.dw_leaderboard(text, date)                to anon, authenticated;
 grant execute on function public.dw_push(uuid, text, jsonb, text)          to anon, authenticated;
+
+-- El plan sólo tiene sentido con cuenta: sin ella auth.uid() es null.
+revoke all on function public.dw_plan_sync(jsonb) from public, anon;
+grant execute on function public.dw_plan_sync(jsonb)                       to authenticated;
 
 -- El barrendero no se expone: no lo llama nadie desde el navegador.
 revoke all on function public.dw_sweep_ghosts() from anon, authenticated;
