@@ -4232,6 +4232,7 @@ function openCodigo(email) {
           toast("Sesión iniciada");
           await recuperarGrupo();
           if (group && supaReady()) ciclo({ forzar: true, conDias: true });
+          sincronizarPlan();
         } catch (e) {
           busy(boton, false, "Entrar");
           showModalError(e.message);
@@ -4608,8 +4609,10 @@ function openLeave() {
    Tu día: el aro de 24 horas
    ---------------------------------------------------------------------
    Un plan del día con forma de reloj: las 12 arriba, las 00 abajo, y cada
-   bloque es un trozo del aro. Vive sólo en el dispositivo, igual que el
-   registro, y se guarda con el mismo truco para no perder nada: cada
+   bloque es un trozo del aro. Se guarda en el dispositivo, igual que el
+   registro, y con la sesión iniciada también en la cuenta (dw_plans), para
+   que el móvil y el ordenador vean lo mismo. Las dos cosas usan el mismo
+   truco para no perder nada: cada
    bloque lleva su sello, borrar deja una lápida en vez de hacerlo
    desaparecer, y dos copias se fusionan bloque a bloque quedándose con la
    escritura más reciente. Sin lápida, una copia vieja resucitaría lo
@@ -4717,12 +4720,65 @@ let planDia = dateKey(new Date());
 let planSigueHoy = true;           // al pasar la medianoche, el aro se va con el día
 let planArrastre = null;
 
-function guardarPlan() {
+function guardarPlanLocal() {
   plan = fusionarPlan(normalizarPlan(readJSON(K.PLAN)), plan);
   plan.updatedAt = stamp();
   const ok = writeJSON(K.PLAN, plan);
   idbSet("plan", plan);
   if (!ok) toast("No se ha podido guardar en este navegador", true);
+}
+function guardarPlan() {
+  guardarPlanLocal();
+  programarSyncPlan();
+}
+
+/* ------------------------- el plan en la cuenta --------------------- */
+/* Antes el plan vivía sólo en el dispositivo: lo que ponías en el
+   ordenador no llegaba nunca al móvil, aunque entraras con la misma
+   cuenta. Ahora, con la sesión iniciada, una sola llamada a dw_plan_sync
+   sube los bloques de aquí y devuelve los de la cuenta ya fusionados, y
+   aquí se vuelven a fusionar con lo local, que puede haber cambiado
+   mientras tanto. Sin cuenta o sin conexión, todo sigue funcionando en el
+   dispositivo como hasta ahora; lo pendiente sube en la siguiente vuelta. */
+const PLAN_SYNC_PAUSA = 1500;       // tras un cambio: junta varios en una petición
+const PLAN_SYNC_CADA = 120000;      // con la app delante, se mira si hay cambios de fuera
+let planSyncTimer = null;
+let planEnVuelo = null;
+let planOtraVez = false;
+let planUltimoIntento = 0;
+
+function programarSyncPlan(ms) {
+  if (!sesionIniciada() || !supaReady()) return;
+  clearTimeout(planSyncTimer);
+  planSyncTimer = setTimeout(sincronizarPlan, ms === undefined ? PLAN_SYNC_PAUSA : ms);
+}
+
+function sincronizarPlan() {
+  if (!sesionIniciada() || !supaReady()) return Promise.resolve();
+  // Un cambio hecho mientras hay una petición en el aire no se pierde: se
+  // manda otra en cuanto vuelva la primera.
+  if (planEnVuelo) { planOtraVez = true; return planEnVuelo; }
+  clearTimeout(planSyncTimer);
+  planUltimoIntento = Date.now();
+  planEnVuelo = (async () => {
+    try {
+      const r = await rpc("dw_plan_sync", { p_bloques: plan.bloques });
+      const remoto = normalizarPlan({ bloques: r || {} });
+      const antes = JSON.stringify(plan.bloques);
+      plan = fusionarPlan(plan, remoto);
+      subirSelloPlan(plan);
+      if (JSON.stringify(plan.bloques) !== antes) {
+        guardarPlanLocal();
+        renderPlan();
+      }
+    } catch (e) {
+      /* sin conexión: se reintenta en la siguiente vuelta */
+    } finally {
+      planEnVuelo = null;
+      if (planOtraVez) { planOtraVez = false; programarSyncPlan(300); }
+    }
+  })();
+  return planEnVuelo;
 }
 
 async function cargarPlanAsync() {
@@ -5200,6 +5256,7 @@ function cablearAro() {
   // aro entero cada medio minuto le quitaría el foco a quien use teclado.
   setInterval(() => {
     if (document.visibilityState !== "visible" || planArrastre) return;
+    if (Date.now() - planUltimoIntento > PLAN_SYNC_CADA) sincronizarPlan();
     const hoy = dateKey(new Date());
     if (planSigueHoy && planDia !== hoy) { renderPlan(); return; }
     if (planDia !== hoy) return;
@@ -5420,7 +5477,9 @@ cablearAro();
 render();
 if (session && !sessionPausada()) { startTicking(); acquireWakeLock(); }
 loadAsync();
-cargarPlanAsync();
+// Primero se junta lo de IndexedDB y después se sincroniza con la cuenta,
+// para no subir un plan a medias.
+cargarPlanAsync().then(sincronizarPlan);
 requestPersistence();
 renderRanking();
 
@@ -5594,6 +5653,8 @@ document.addEventListener("visibilitychange", () => {
   render();
   refrescarPresencia();
   if (session && !sessionPausada()) { acquireWakeLock(); startTicking(); }
+  // Al volver a la app se trae lo que hayas cambiado en otro dispositivo.
+  sincronizarPlan();
   // Latido inmediato al volver: si no, el grupo te vería desconectado
   // durante casi un minuto después de desbloquear el móvil.
   if (group && supaReady()) ciclo({});
