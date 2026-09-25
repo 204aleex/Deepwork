@@ -550,7 +550,7 @@
   }
 
   /* ---------- tu dia: el aro de 24 horas ----------
-     Un reloj de un dia entero con las 00 arriba y las 12 abajo. Los
+     Un reloj de un dia entero con las 12 arriba y las 00 abajo. Los
      bloques son sectores del aro; la aguja roja es ahora. Todo el dibujo
      va en un SVG de 400 de lado y escala solo, y el texto del centro va en
      cqw por lo mismo que el reloj de aletas: entra igual en un movil que
@@ -4607,7 +4607,7 @@ function openLeave() {
 /* =====================================================================
    Tu día: el aro de 24 horas
    ---------------------------------------------------------------------
-   Un plan del día con forma de reloj: las 00 arriba, las 12 abajo, y cada
+   Un plan del día con forma de reloj: las 12 arriba, las 00 abajo, y cada
    bloque es un trozo del aro. Vive sólo en el dispositivo, igual que el
    registro, y se guarda con el mismo truco para no perder nada: cada
    bloque lleva su sello, borrar deja una lápida en vez de hacerlo
@@ -4631,6 +4631,10 @@ const PASO_MIN = 15;                 // el aro se ajusta a cuartos de hora
    `aro`, el nombre de cada bloque corre por `texto` y las horas por `num`,
    lejos de las marcas del borde para que no se pisen. */
 const PD = { c: 200, aro: 190, dentro: 124, texto: 141, num: 167 };
+/* La hora que queda arriba. El mediodía: la parte del día que se
+   organiza (clase, trabajo, gimnasio) queda en la mitad de arriba, que es
+   la que se lee derecha, y la noche se va abajo. */
+const HORA_ARRIBA = 12 * 60;
 const PLAN_COLORES = [
   { hex: "#7d97ff", nombre: "Azul" },
   { hex: "#3ddc97", nombre: "Verde" },
@@ -4795,7 +4799,7 @@ function etiquetaBloque(b) {
 /* ------------------------- geometría del aro ------------------------ */
 
 function puntoAro(r, min) {
-  const a = (min / DIA_MIN) * 2 * Math.PI;           // 0 arriba, en sentido horario
+  const a = ((min - HORA_ARRIBA) / DIA_MIN) * 2 * Math.PI;   // en sentido horario
   return [PD.c + r * Math.sin(a), PD.c - r * Math.cos(a)];
 }
 const xy = (p) => redondo(p[0]) + " " + redondo(p[1]);
@@ -4825,7 +4829,10 @@ function arcoD(ini, dur, r, alReves) {
    el icono, derecho, en el centro del bloque. */
 function textoBloque(b, dur, i) {
   const medio = b.inicio + dur / 2;
-  const abajo = envolver(medio) > 360 && envolver(medio) < 1080;
+  // En qué mitad del dibujo cae, no del día: con las 12 arriba, la mitad
+  // de abajo es la noche, de las 18 a las 06.
+  const girado = envolver(medio - HORA_ARRIBA);
+  const abajo = girado > 360 && girado < 1080;
   const hueco = PD.texto * (dur / DIA_MIN) * 2 * Math.PI - 12;
   const letra = 6.9;
   const letras = Array.from(b.nombre || "");
@@ -4934,12 +4941,14 @@ function dibujarPlan(arr) {
          '" dy=".36em" text-anchor="middle">' + pad(h) + "</text>";
   }
 
-  // La luna arriba (medianoche) y el sol abajo (mediodía), dentro del disco.
-  const lx = PD.c, ly = PD.c - 100, lr = 8.5;
+  // El sol junto al mediodía y la luna junto a la medianoche, dentro del
+  // disco. Se colocan como las horas, así siguen a HORA_ARRIBA.
+  const luna = puntoAro(100, 0), sol = puntoAro(100, 12 * 60);
+  const lx = redondo(luna[0]), ly = redondo(luna[1]), lr = 8.5;
   s += '<path class="pd-luna" transform="rotate(-24 ' + lx + " " + ly + ')" d="M' + lx + " " + (ly - lr) +
        "A" + lr + " " + lr + " 0 1 0 " + lx + " " + (ly + lr) +
        "A" + (lr * 1.3) + " " + (lr * 1.3) + " 0 0 1 " + lx + " " + (ly - lr) + 'Z"></path>';
-  const sx = PD.c, sy = PD.c + 100;
+  const sx = redondo(sol[0]), sy = redondo(sol[1]);
   let rayos = "";
   for (let k = 0; k < 8; k++) {
     const a = k * Math.PI / 4;
@@ -5054,7 +5063,7 @@ function aroDesde(e) {
   const y = (e.clientY - rect.top) * escala - PD.c;
   let a = Math.atan2(x, -y);
   if (a < 0) a += 2 * Math.PI;
-  return { r: Math.hypot(x, y), min: (a / (2 * Math.PI)) * DIA_MIN };
+  return { r: Math.hypot(x, y), min: envolver((a / (2 * Math.PI)) * DIA_MIN + HORA_ARRIBA) };
 }
 function enElAro(p) { return p.r >= PD.dentro - 4 && p.r <= PD.aro + 8; }
 
